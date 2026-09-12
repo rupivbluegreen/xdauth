@@ -195,11 +195,13 @@ func newSAMLProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 		metadataXML = b
 	}
 
-	provider, err := saml.New(ctx, saml.Config{
-		BaseURL:           baseURL,
-		IDPMetadataURL:    metadataURL,
-		IDPMetadataXML:    metadataXML,
-		IdentityAttribute: identityAttribute,
+	provider, err := retryDiscovery(ctx, logger, "saml idp metadata fetch", func() (*saml.Provider, error) {
+		return saml.New(ctx, saml.Config{
+			BaseURL:           baseURL,
+			IDPMetadataURL:    metadataURL,
+			IDPMetadataXML:    metadataXML,
+			IdentityAttribute: identityAttribute,
+		})
 	})
 	if err != nil {
 		logger.Error("configure saml provider", "error", err)

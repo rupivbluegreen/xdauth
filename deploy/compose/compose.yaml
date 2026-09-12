@@ -1,0 +1,38 @@
+services:
+  # dex and broker share the host's network namespace: dex's single "issuer" URL must be reachable
+  # both by the broker (server-to-server) and by the user's browser, and container bridge networking
+  # cannot make one hostname:port resolve identically in both places without extra host-side setup.
+  # Host networking is Linux-only; this demo targets a Linux Docker host.
+  dex:
+    image: dexidp/dex:v2.41.1
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    network_mode: host
+    volumes:
+      - ./dex/config.yaml:/etc/dex/config.yaml:ro
+
+  broker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    depends_on:
+      - dex
+    network_mode: host
+    environment:
+      XDAUTH_LISTEN_ADDR: ":8080"
+      XDAUTH_BASE_URL: "http://localhost:8080"
+      XDAUTH_ISSUER_URL: "http://localhost:5556/dex"
+      XDAUTH_CLIENT_ID: "xdauth"
+      XDAUTH_CLIENT_SECRET: "xdauth-secret"
+      XDAUTH_IDENTITY_CLAIM: "email"
+      XDAUTH_SCOPES: "openid,email,profile"
+
+  sshd:
+    build:
+      context: ../..
+      dockerfile: deploy/compose/sshd/Dockerfile
+    depends_on:
+      - broker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "2222:22"

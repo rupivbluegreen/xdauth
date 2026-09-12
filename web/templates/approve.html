@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xdauth — approve sign-in</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 3rem auto; padding: 0 1rem; color: #1a1a1a; }
+  .context { background: #f4f4f5; border: 1px solid #d4d4d8; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  .context dt { font-weight: 600; }
+  .context dd { margin: 0 0 0.5rem 0; }
+  input[type=text] { font-size: 1.5rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem; width: 12rem; }
+  button { font-size: 1rem; padding: 0.6rem 1.2rem; margin-right: 0.5rem; cursor: pointer; }
+  .deny { background: #fee2e2; }
+  .approve { background: #dcfce7; }
+</style>
+</head>
+<body>
+  <h1>Approve sign-in?</h1>
+  <p>Someone is trying to sign in as <strong>{{.Identity}}</strong> using the details below. If this is not you, or you did not start this, choose <em>Deny</em>.</p>
+  <dl class="context">
+    <dt>Client host</dt><dd>{{.ClientHost}}</dd>
+    <dt>Client kind</dt><dd>{{.ClientKind}}</dd>
+    <dt>Source IP</dt><dd>{{.ClientIP}}</dd>
+    <dt>Started at</dt><dd>{{.StartedAt}}</dd>
+    <dt>Identity</dt><dd>{{.Identity}}</dd>
+  </dl>
+  <p>Enter the code shown on the client's screen to approve:</p>
+  <form method="POST" action="{{.ApproveAction}}">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <p><input type="text" name="user_code" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" required autofocus></p>
+    <button class="approve" type="submit" name="decision" value="approve">Approve</button>
+    <button class="deny" type="submit" name="decision" value="deny">Deny</button>
+  </form>
+</body>
+</html>

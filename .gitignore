@@ -1,0 +1,9 @@
+/bin/
+/dist/
+*.test
+*.out
+.DS_Store
+xdauth-broker
+xdauth-login
+xdauth-pam
+compose.verify.yaml

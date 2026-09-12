@@ -179,6 +179,8 @@ func newSAMLProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 	metadataURL := os.Getenv("XDAUTH_SAML_IDP_METADATA_URL")
 	metadataFile := os.Getenv("XDAUTH_SAML_IDP_METADATA_FILE")
 	identityAttribute := os.Getenv("XDAUTH_SAML_IDENTITY_ATTRIBUTE")
+	entityID := os.Getenv("XDAUTH_SAML_ENTITY_ID")
+	acsURL := os.Getenv("XDAUTH_SAML_ACS_URL")
 
 	if (metadataURL == "") == (metadataFile == "") {
 		fmt.Fprintln(os.Stderr, "xdauth-broker: --protocol=saml needs exactly one of XDAUTH_SAML_IDP_METADATA_URL or XDAUTH_SAML_IDP_METADATA_FILE")
@@ -198,6 +200,8 @@ func newSAMLProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 	provider, err := retryDiscovery(ctx, logger, "saml idp metadata fetch", func() (*saml.Provider, error) {
 		return saml.New(ctx, saml.Config{
 			BaseURL:           baseURL,
+			EntityID:          entityID,
+			ACSURL:            acsURL,
 			IDPMetadataURL:    metadataURL,
 			IDPMetadataXML:    metadataXML,
 			IdentityAttribute: identityAttribute,

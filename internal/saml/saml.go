@@ -22,7 +22,8 @@ import (
 // Config configures the broker's SAML service provider.
 type Config struct {
 	EntityID          string // defaults to BaseURL
-	BaseURL           string // this broker's own base URL; ACS is BaseURL + "/auth/saml/acs"
+	BaseURL           string // this broker's own base URL; ACS is BaseURL + "/auth/saml/acs" unless ACSURL is set
+	ACSURL            string // optional: overrides the default ACS URL, e.g. to match an SP already registered with the IdP under a different URL
 	IDPMetadataURL    string // fetch IdP metadata from here at New(); mutually exclusive with IDPMetadataXML
 	IDPMetadataXML    []byte // IdP metadata document, e.g. read from a local file by the caller
 	IdentityAttribute string // SAML attribute read as the identity value; empty means use the NameID
@@ -77,9 +78,13 @@ func New(ctx context.Context, cfg Config) (*Provider, error) {
 	if entityID == "" {
 		entityID = cfg.BaseURL
 	}
-	acsURL, err := url.Parse(cfg.BaseURL + "/auth/saml/acs")
+	acsURLStr := cfg.ACSURL
+	if acsURLStr == "" {
+		acsURLStr = cfg.BaseURL + "/auth/saml/acs"
+	}
+	acsURL, err := url.Parse(acsURLStr)
 	if err != nil {
-		return nil, fmt.Errorf("saml: parse BaseURL: %w", err)
+		return nil, fmt.Errorf("saml: parse ACS URL: %w", err)
 	}
 	metadataURL, err := url.Parse(cfg.BaseURL + "/auth/saml/metadata")
 	if err != nil {

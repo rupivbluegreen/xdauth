@@ -81,7 +81,7 @@ Keeping IdP tokens inside the broker keeps their blast radius small and makes re
 
 ## Provider notes
 
-Any OIDC provider works, and so does any SAML 2.0 IdP (`--protocol=saml`: `XDAUTH_SAML_IDP_METADATA_URL` or `_FILE`, optional `XDAUTH_SAML_IDENTITY_ATTRIBUTE` — defaults to the assertion's `NameID`). Two things are worth doing on the IdP side regardless of vendor or protocol:
+Any OIDC provider works, and so does any SAML 2.0 IdP (`--protocol=saml`: `XDAUTH_SAML_IDP_METADATA_URL` or `_FILE`, optional `XDAUTH_SAML_IDENTITY_ATTRIBUTE` — defaults to the assertion's `NameID`). Optional `XDAUTH_SAML_ENTITY_ID` and `XDAUTH_SAML_ACS_URL` let the SP's entity ID and ACS URL be overridden independently of `XDAUTH_BASE_URL`, e.g. when migrating from an existing SP already registered with the IdP under different values. Two things are worth doing on the IdP side regardless of vendor or protocol:
 
 - **Scope the flow.** Allow this pattern only for the broker's app registration and block other device/cross-device flows tenant-wide (Entra: Conditional Access → *Authentication flows*).
 - **Require phishing-resistant authentication** (FIDO2 / passkeys / platform authenticators) and managed devices for the broker app. The broker makes the *cross-device step* safe; the IdP still owns the *primary* authentication.

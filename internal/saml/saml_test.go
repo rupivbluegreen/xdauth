@@ -56,6 +56,44 @@ func TestBeginLogin_SetsCorrelationAndReturnsRedirect(t *testing.T) {
 	assert.Contains(t, redirectURL, "RelayState=sess-123")
 }
 
+func TestNew_ACSURLDefaultsToBaseURLPlusPath(t *testing.T) {
+	p, err := New(context.Background(), Config{
+		BaseURL:        "https://broker.example",
+		IDPMetadataXML: minimalIDPMetadata(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "https://broker.example/auth/saml/acs", p.sp.AcsURL.String())
+}
+
+func TestNew_ACSURLOverride(t *testing.T) {
+	p, err := New(context.Background(), Config{
+		BaseURL:        "https://broker.example",
+		ACSURL:         "https://old-sp.example/saml/consume",
+		IDPMetadataXML: minimalIDPMetadata(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "https://old-sp.example/saml/consume", p.sp.AcsURL.String())
+}
+
+func TestNew_EntityIDDefaultsToBaseURL(t *testing.T) {
+	p, err := New(context.Background(), Config{
+		BaseURL:        "https://broker.example",
+		IDPMetadataXML: minimalIDPMetadata(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "https://broker.example", p.sp.EntityID)
+}
+
+func TestNew_EntityIDOverride(t *testing.T) {
+	p, err := New(context.Background(), Config{
+		BaseURL:        "https://broker.example",
+		EntityID:       "https://old-sp.example/saml/metadata",
+		IDPMetadataXML: minimalIDPMetadata(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "https://old-sp.example/saml/metadata", p.sp.EntityID)
+}
+
 func TestIdentityFromAssertion_DefaultsToNameID(t *testing.T) {
 	assertion := &crewjamsaml.Assertion{
 		ID:      "assertion-1",

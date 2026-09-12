@@ -35,7 +35,7 @@ It's easy to conflate these:
 
 ## Cookies and CSRF
 
-The browser side is bound to one session by an `HttpOnly`, `SameSite=Lax` cookie set in `handleVerify` (before the IdP redirect) and read back in `handleIdPResponse` and `handleApprove`. `Secure` is set from the actual request (`r.TLS != nil` or `X-Forwarded-Proto: https`), not hardcoded — a hardcoded `Secure: true` would silently drop the cookie over plain HTTP, which is how the local dev/demo environment runs.
+The browser side is bound to one session by an `HttpOnly` cookie set in `handleVerify` (before the IdP redirect) and read back in `handleIdPResponse` and `handleApprove`. `SameSite` is `None` (required for the SAML HTTP-POST binding, whose ACS callback is a cross-site POST that a `Lax` cookie never rides along on), falling back to `Lax` only when the request isn't HTTPS, since `SameSite=None` without `Secure` is dropped by browsers outright. `Secure` is set from the actual request (`r.TLS != nil` or `X-Forwarded-Proto: https`), not hardcoded — a hardcoded `Secure: true` would silently drop the cookie over plain HTTP, which is how the local dev/demo environment runs.
 
 A separate per-session CSRF token, generated once identity is bound, is a hidden field in the approval form and checked in `handleApprove` — independent of the four phishing-resistance checks, this is ordinary web hygiene.
 

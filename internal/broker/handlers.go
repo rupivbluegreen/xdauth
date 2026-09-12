@@ -290,14 +290,21 @@ func (b *Broker) handlePoll(w http.ResponseWriter, r *http.Request) {
 
 // setSessionCookie marks Secure only over an actual TLS (or TLS-terminated-upstream) request.
 func setSessionCookie(w http.ResponseWriter, r *http.Request, sessionID string) {
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	// SAML's HTTP-POST binding submits the ACS callback as a cross-site POST, which browsers never attach a SameSite=Lax (or default) cookie to, so this must be None; None requires Secure or browsers drop it, so fall back to Lax on plain-HTTP local dev where Secure is false.
+	sameSite := http.SameSiteNoneMode
+	if !secure {
+		sameSite = http.SameSiteLaxMode
+	}
 	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- Secure/HttpOnly/SameSite are all set below, gosec can't see the conditional
 		Name:     sessionCookieName,
 		Value:    sessionID,
 		Path:     "/auth",
 		HttpOnly: true,
-		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
-		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		SameSite: sameSite,
 	})
+	// this cookie only binds the browser to a session id; the separate csrf_token field checked in handleApprove is the actual CSRF defense, so relaxing SameSite here does not weaken CSRF protection.
 }
 
 func readSessionCookie(r *http.Request) (string, bool) {

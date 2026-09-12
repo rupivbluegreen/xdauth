@@ -118,7 +118,7 @@ func newOIDCProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 
 	clientSecret := os.Getenv("XDAUTH_CLIENT_SECRET")
 	if path := os.Getenv("XDAUTH_CLIENT_SECRET_FILE"); path != "" {
-		b, err := os.ReadFile(path)
+		b, err := os.ReadFile(path) // #nosec G304 G703 -- operator-supplied config path, not user input
 		if err != nil {
 			logger.Error("read client secret file", "error", err)
 			return nil, 1
@@ -159,7 +159,7 @@ func newSAMLProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 
 	var metadataXML []byte
 	if metadataFile != "" {
-		b, err := os.ReadFile(metadataFile)
+		b, err := os.ReadFile(metadataFile) // #nosec G304 G703 -- operator-supplied config path, not user input
 		if err != nil {
 			logger.Error("read saml idp metadata file", "error", err)
 			return nil, 1

@@ -123,7 +123,7 @@ func (b *Broker) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setSessionCookie(w, r, sess.ID)
-	http.Redirect(w, r, redirectURL, http.StatusFound)
+	http.Redirect(w, r, redirectURL, http.StatusFound) // #nosec G710 -- redirectURL comes from the broker's own configured IdP, never from the request
 }
 
 // handleIdPResponse completes login for either protocol: GET /auth/callback (OIDC) or
@@ -290,7 +290,7 @@ func (b *Broker) handlePoll(w http.ResponseWriter, r *http.Request) {
 
 // setSessionCookie marks Secure only over an actual TLS (or TLS-terminated-upstream) request.
 func setSessionCookie(w http.ResponseWriter, r *http.Request, sessionID string) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- Secure/HttpOnly/SameSite are all set below, gosec can't see the conditional
 		Name:     sessionCookieName,
 		Value:    sessionID,
 		Path:     "/auth",

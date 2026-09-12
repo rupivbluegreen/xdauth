@@ -32,6 +32,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          skip-cache: true # a stale cache from an earlier broken tree can corrupt module resolution
 
   govulncheck:
     runs-on: ubuntu-latest

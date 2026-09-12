@@ -1,4 +1,4 @@
-issuer: http://localhost:5556/dex
+issuer: http://127.0.0.1:5556/dex
 
 storage:
   type: memory
@@ -10,7 +10,7 @@ staticClients:
   - id: xdauth
     secret: xdauth-secret
     redirectURIs:
-      - "http://localhost:8080/auth/callback"
+      - "http://127.0.0.1:8080/auth/callback"
     name: "xdauth broker"
 
 enablePasswordDB: true

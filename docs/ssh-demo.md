@@ -46,3 +46,7 @@ Open that URL in a browser, log in to dex as `testuser` / `password`, check the 
 ## Reusing this for your own IdP
 
 Swap `dex` for your real provider: set `XDAUTH_ISSUER_URL`, `XDAUTH_CLIENT_ID`, `XDAUTH_CLIENT_SECRET`, and `XDAUTH_IDENTITY_CLAIM` on the `broker` service to match. See the README's "Provider notes" for Entra-specific advice (the UPN vs. on-prem account name mismatch).
+
+## A note on prompt delivery
+
+This demo's `pam_exec` → stdout relay does not stream live: the URL + code prompt can be held back until the `xdauth-pam` helper process exits, rather than appearing the moment it's printed. See `docs/gossh-server.md` for `cmd/xdauth-sshd`, a second demo — a custom SSH server on `golang.org/x/crypto/ssh` — that doesn't have this limitation, and for why.

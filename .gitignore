@@ -6,4 +6,3 @@
 /xdauth-broker
 /xdauth-login
 /xdauth-pam
-/deploy/compose/compose.verify.yaml

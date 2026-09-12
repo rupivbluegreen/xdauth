@@ -61,9 +61,11 @@ The host running the client only ever talks to the broker. The broker is the onl
 
 | Piece | What it is | Status |
 |---|---|---|
-| `xdauth-broker` | The server. Go, single static binary, container image. Speaks OIDC (Authorization Code + PKCE) or SAML 2.0 (SP-initiated, `internal/saml`) to your IdP — the protocol is behind an `IdentityProvider` interface, so the session state machine and the four checks are identical either way. Owns sessions, the verification page, and the four checks. | design |
-| `pkg/client` | Go library: `Start` / `Poll` with PKCE handled for you. Add xdauth login to a CLI in ~20 lines. | design |
-| `xdauth-pam` | Helper for stock OpenSSH: `sshd` → `pam_exec` → helper prints the URL + code through keyboard-interactive, polls the broker, exits 0 on approval. No custom SSH client, no cgo. A native PAM module can follow. | design |
+| `xdauth-broker` | The server. Go, single static binary, container image. Speaks OIDC (Authorization Code + PKCE) or SAML 2.0 (SP-initiated, `internal/saml`) to your IdP — the protocol is behind an `IdentityProvider` interface, so the session state machine and the four checks are identical either way. Owns sessions, the verification page, and the four checks. | built |
+| `pkg/client` | Go library: `Start` / `Poll` with PKCE handled for you. Add xdauth login to a CLI in ~20 lines. | built |
+| `xdauth-pam` | Helper for stock OpenSSH: `sshd` → `pam_exec` → helper prints the URL + code through keyboard-interactive, polls the broker, exits 0 on approval. No custom SSH client, no cgo. Known limitation: `pam_exec`'s relay is not guaranteed live — see `docs/ssh-demo.md`. | built |
+| `xdauth-sshd` | Recommended SSH integration: a custom server on `golang.org/x/crypto/ssh` using `KeyboardInteractiveCallback` directly, so the prompt is written to the wire immediately instead of relayed through `pam_exec`'s stdout. See `docs/gossh-server.md`. | built |
+| `xdauth-pam-native` | Attempt at a native (cgo) PAM module to fix `xdauth-pam`'s relay limitation while keeping stock `sshd`. Loads and runs correctly up to the broker call, which hangs unresolved in testing. Not recommended; see `docs/native-pam-status.md`. | experimental, not working |
 | SSH certificate issuer | Optional: on approval the broker signs a short-lived SSH certificate (principals = identity) so the user is prompted once and then uses plain `ssh` freely. | later |
 | Kubernetes / Helm | Deployment chart, PDB, metrics. | later |
 

@@ -131,19 +131,47 @@ func newOIDCProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 		return nil, 2
 	}
 
-	provider, err := oidc.New(ctx, oidc.Config{
-		IssuerURL:     issuerURL,
-		ClientID:      clientID,
-		ClientSecret:  clientSecret,
-		RedirectURL:   baseURL + "/auth/callback",
-		Scopes:        strings.Split(scopes, ","),
-		IdentityClaim: identityClaim,
+	provider, err := retryDiscovery(ctx, logger, "oidc discovery", func() (*oidc.Provider, error) {
+		return oidc.New(ctx, oidc.Config{
+			IssuerURL:     issuerURL,
+			ClientID:      clientID,
+			ClientSecret:  clientSecret,
+			RedirectURL:   baseURL + "/auth/callback",
+			Scopes:        strings.Split(scopes, ","),
+			IdentityClaim: identityClaim,
+		})
 	})
 	if err != nil {
 		logger.Error("discover oidc provider", "error", err)
 		return nil, 1
 	}
 	return provider, 0
+}
+
+// retryDiscovery retries fn with backoff for up to 30s, so a slow-starting IdP (e.g. a
+// container that isn't ready yet) doesn't crash the broker on its very first attempt.
+func retryDiscovery[T any](ctx context.Context, logger *slog.Logger, what string, fn func() (T, error)) (T, error) {
+	backoff := 500 * time.Millisecond
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		v, err := fn()
+		if err == nil {
+			return v, nil
+		}
+		if time.Now().After(deadline) {
+			return v, err
+		}
+		logger.Warn("retrying "+what, "error", err, "retry_in", backoff)
+		select {
+		case <-ctx.Done():
+			var zero T
+			return zero, ctx.Err()
+		case <-time.After(backoff):
+		}
+		if backoff < 5*time.Second {
+			backoff *= 2
+		}
+	}
 }
 
 // newSAMLProvider returns (provider, 0) on success, or (nil, exit code) on failure.

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xdauth</title>
+<meta name="description" content="Phishing-resistant cross-device login for headless and air-gapped hosts.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-alt: #f6f7f9;
+    --text: #1a1d23;
+    --text-dim: #565d6b;
+    --border: #e2e5ea;
+    --accent: #b3261e;
+    --accent-bg: #fdecea;
+    --good: #1e6b3c;
+    --good-bg: #e8f5ec;
+    --code-bg: #f0f1f4;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --bg-alt: #1b1e24;
+      --text: #e7e9ec;
+      --text-dim: #9aa1ac;
+      --border: #2b2f37;
+      --accent: #ff8079;
+      --accent-bg: #3a1f1f;
+      --good: #7fd9a0;
+      --good-bg: #163524;
+      --code-bg: #20242c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  header { margin-bottom: 2.5rem; }
+  .status {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-bg);
+    padding: 0.25em 0.7em;
+    border-radius: 999px;
+    margin-bottom: 1rem;
+  }
+  h1 { font-size: 2.3rem; margin: 0 0 0.4em; letter-spacing: -0.02em; }
+  .tagline { font-size: 1.15rem; color: var(--text-dim); margin: 0 0 1.5rem; max-width: 44ch; }
+  .cta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    padding: 0.6em 1.1em;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+  }
+  .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn.secondary { color: var(--text); }
+  section { margin: 2.5rem 0; }
+  h2 { font-size: 1.35rem; margin: 0 0 0.8em; }
+  p { margin: 0 0 1em; }
+  .problem-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  .problem-table th, .problem-table td { text-align: left; padding: 0.55em 0.7em; border-bottom: 1px solid var(--border); }
+  .problem-table th { color: var(--text-dim); font-weight: 600; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  .fail { color: var(--accent); font-weight: 600; }
+  .ok { color: var(--good); font-weight: 600; }
+  .checks { display: grid; gap: 0.9rem; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .checks { grid-template-columns: 1fr 1fr; } }
+  .check {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+  }
+  .check .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.6em; height: 1.6em; border-radius: 50%;
+    background: var(--good-bg); color: var(--good);
+    font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5em;
+  }
+  .check h3 { margin: 0 0 0.3em; font-size: 1rem; }
+  .check p { margin: 0; color: var(--text-dim); font-size: 0.9rem; }
+  code, pre { font-family: var(--mono); font-size: 0.87rem; }
+  code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 5px; }
+  pre {
+    background: var(--code-bg);
+    padding: 1rem 1.1rem;
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; }
+  .components { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .components th, .components td { text-align: left; padding: 0.5em 0.7em; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .components th { color: var(--text-dim); font-weight: 600; font-size: 0.82rem; text-transform: uppercase; }
+  .pill { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.15em 0.6em; border-radius: 999px; }
+  .pill.built { background: var(--good-bg); color: var(--good); }
+  .pill.later { background: var(--code-bg); color: var(--text-dim); }
+  .pill.exp { background: var(--accent-bg); color: var(--accent); }
+  .doclinks { display: grid; gap: 0.6rem; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .doclinks { grid-template-columns: 1fr 1fr; } }
+  .doclinks a {
+    display: block;
+    padding: 0.8em 1em;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.92rem;
+  }
+  .doclinks a:hover { background: var(--bg-alt); }
+  .doclinks .sub { display: block; color: var(--text-dim); font-size: 0.82rem; margin-top: 0.2em; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="status">RFC / pre-alpha &middot; v0.1.0</span>
+    <h1>xdauth</h1>
+    <p class="tagline">Phishing-resistant cross-device login for headless and air-gapped hosts &mdash; without a password, and without the phishing weakness of the OAuth 2.0 Device Authorization Grant.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/rupivbluegreen/xdauth">View on GitHub</a>
+      <a class="btn secondary" href="https://github.com/rupivbluegreen/xdauth/releases/tag/v0.1.0">Download v0.1.0</a>
+      <a class="btn secondary" href="https://github.com/rupivbluegreen/xdauth/blob/main/README.md">Read the RFC</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>The problem</h2>
+    <p>A CLI, an SSH session, or any other non-browser client has three ways to authenticate a human against a modern IdP &mdash; and they're all bad.</p>
+    <table class="problem-table">
+      <tr><th>Option</th><th>Why it fails</th></tr>
+      <tr><td>ROPC</td><td>Rejected once MFA/Conditional Access is on. Turns your app into a credential-harvesting middleman.</td></tr>
+      <tr><td>Device code (RFC&nbsp;8628)</td><td><span class="fail">Structurally phishable</span> &mdash; the code isn't bound to the client, and the consent page shows the victim nothing about who asked. Not theoretical: see Microsoft's Storm-2372 advisory.</td></tr>
+      <tr><td>CIBA</td><td>The right answer on paper, but not offered by most major IdPs, and needs a push-capable authenticator every user may not have.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>The idea</h2>
+    <p>Keep the good part of the device-code flow &mdash; the user authenticates in a browser on <em>any</em> device, so the host itself needs no internet access &mdash; and close the two structural gaps by having the broker own the verification page instead of sending users to the IdP's own device-login screen.</p>
+    <div class="checks">
+      <div class="check"><span class="num">1</span><h3>PKCE</h3><p>The client's own code_verifier must match. An attacker who tricks a victim into approving still can't collect the result.</p></div>
+      <div class="check"><span class="num">2</span><h3>Number matching</h3><p>The browser user types the code shown on the client's terminal. No code, no approval.</p></div>
+      <div class="check"><span class="num">3</span><h3>Requester context</h3><p>The approval page shows the client's host, IP, and kind before anyone can approve anything.</p></div>
+      <div class="check"><span class="num">4</span><h3>Identity match</h3><p>The IdP identity must equal the login_hint the client asked for &mdash; enforced immediately, before approval is even possible.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <pre><code>git clone https://github.com/rupivbluegreen/xdauth
+cd xdauth
+docker compose -f deploy/compose/compose.yaml up --build</code></pre>
+    <p>Brings up a broker, a mock OIDC provider, and a stock OpenSSH server gated entirely by xdauth &mdash; no password, no public key. See <a href="https://github.com/rupivbluegreen/xdauth/blob/main/docs/ssh-demo.md">docs/ssh-demo.md</a>.</p>
+  </section>
+
+  <section>
+    <h2>Components</h2>
+    <table class="components">
+      <tr><th>Piece</th><th>What</th><th></th></tr>
+      <tr><td><code>xdauth-broker</code></td><td>The server &mdash; OIDC or SAML 2.0 to your IdP, owns sessions and the four checks.</td><td><span class="pill built">built</span></td></tr>
+      <tr><td><code>pkg/client</code></td><td>Go library: <code>Start</code> / <code>Poll</code>, PKCE handled for you.</td><td><span class="pill built">built</span></td></tr>
+      <tr><td><code>xdauth-sshd</code></td><td>Recommended SSH integration &mdash; custom server on <code>golang.org/x/crypto/ssh</code>, prompt delivered live, proven by test.</td><td><span class="pill built">built</span></td></tr>
+      <tr><td><code>xdauth-pam</code></td><td>Stock OpenSSH via <code>pam_exec</code>. Works; prompt delivery isn't guaranteed live &mdash; see the docs.</td><td><span class="pill built">built</span></td></tr>
+      <tr><td><code>xdauth-pam-native</code></td><td>Native PAM module attempt to fix the above. Loads correctly; the broker call hangs, unresolved.</td><td><span class="pill exp">experimental</span></td></tr>
+      <tr><td>SSH certificate issuer</td><td>Sign a short-lived cert on approval so the user is prompted once, then uses plain <code>ssh</code>.</td><td><span class="pill later">later</span></td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Docs</h2>
+    <div class="doclinks">
+      <a href="https://github.com/rupivbluegreen/xdauth/blob/main/docs/architecture.md">Architecture<span class="sub">Packages, the state machine, PKCE pairs, cookies</span></a>
+      <a href="https://github.com/rupivbluegreen/xdauth/blob/main/docs/threat-model.md">Threat model<span class="sub">The four checks, what each closes, how to verify</span></a>
+      <a href="https://github.com/rupivbluegreen/xdauth/blob/main/docs/ssh-demo.md">PAM / stock OpenSSH demo<span class="sub">docker compose walkthrough</span></a>
+      <a href="https://github.com/rupivbluegreen/xdauth/blob/main/docs/gossh-server.md">Custom Go SSH server demo<span class="sub">The recommended integration, and why</span></a>
+      <a href="https://github.com/rupivbluegreen/xdauth/blob/main/docs/native-pam-status.md">Native PAM module status<span class="sub">What works, what doesn't, and why</span></a>
+      <a href="https://github.com/rupivbluegreen/xdauth/blob/main/SECURITY.md">Security policy<span class="sub">Report a vulnerability privately</span></a>
+    </div>
+  </section>
+
+  <footer>
+    <p>Apache-2.0. Pre-alpha &mdash; feedback on the design is more valuable than code review right now. <a href="https://github.com/rupivbluegreen/xdauth/issues/new?template=design_feedback.md">Open an issue</a> if you run headless or air-gapped hosts and have been told "device code is not acceptable."</p>
+  </footer>
+
+</div>
+</body>
+</html>

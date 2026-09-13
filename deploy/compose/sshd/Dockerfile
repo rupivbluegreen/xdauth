@@ -19,5 +19,5 @@ COPY deploy/compose/sshd/pam-sshd /etc/pam.d/sshd
 COPY deploy/compose/sshd/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 22
+EXPOSE 2222
 ENTRYPOINT ["/entrypoint.sh"]

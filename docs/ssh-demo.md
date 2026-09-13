@@ -10,7 +10,7 @@ docker compose -f deploy/compose/compose.yaml up --build
 
 This starts three containers: `dex` (a mock OIDC provider with one static user, `testuser` / `password`), `broker` (`xdauth-broker`), and `sshd` (stock OpenSSH + PAM + `xdauth-pam`).
 
-**Requires a Linux Docker host** (a real Linux machine, a Linux VM, or a Linux CI runner — not Docker Desktop's macOS/Windows VM): `dex` and `broker` run with `network_mode: host` so dex's one issuer URL is reachable identically by the broker and by your browser, which container bridge networking alone can't guarantee. `sshd` stays on the regular bridge network and reaches the broker via `host.docker.internal` (added via `extra_hosts: host-gateway`).
+**Requires a Linux Docker host** (a real Linux machine, a Linux VM, or a Linux CI runner — not Docker Desktop's macOS/Windows VM): every service in this compose file runs with `network_mode: host`. `dex` and `broker` need it so dex's one issuer URL is reachable identically by the broker and by your browser, which container bridge networking alone can't guarantee. `sshd` and `xdauth-sshd` are on host networking too, rather than a bridge network reaching the broker via `host.docker.internal` — that cross-network path was observed hanging past the client library's own 10s HTTP timeout with no error surfaced at all in some Docker setups, and same network namespace sidesteps it entirely. `sshd` listens on `2222`, not `22`, to avoid colliding with the host's own SSH daemon.
 
 ## Try it
 
@@ -40,7 +40,7 @@ Open that URL in a browser, log in to dex as `testuser` / `password`, check the 
 ## How it's wired
 
 - `deploy/compose/sshd/sshd_config`: `KbdInteractiveAuthentication yes`, `PasswordAuthentication no`, `PubkeyAuthentication no`, `AuthenticationMethods keyboard-interactive`, `UsePAM yes`.
-- `deploy/compose/sshd/pam-sshd`: the `auth` step is `pam_exec.so quiet stdout /usr/local/bin/xdauth-pam http://host.docker.internal:8080` — its stdout reaches the client through the keyboard-interactive prompt; its exit code is the auth decision. The broker URL is a static argument, not an environment variable: sshd strips its own daemon environment before invoking PAM, so `XDAUTH_BROKER_URL` would rarely reach the helper that way.
+- `deploy/compose/sshd/pam-sshd`: the `auth` step is `pam_exec.so quiet stdout /usr/local/bin/xdauth-pam http://localhost:8080` — its stdout reaches the client through the keyboard-interactive prompt; its exit code is the auth decision. The broker URL is a static argument, not an environment variable: sshd strips its own daemon environment before invoking PAM, so `XDAUTH_BROKER_URL` would rarely reach the helper that way.
 - `cmd/xdauth-pam`: reads the broker URL from `argv[1]` (falling back to `XDAUTH_BROKER_URL` for manual testing) and `PAM_USER` as `login_hint`; fails closed on any error.
 
 ## Reusing this for your own IdP

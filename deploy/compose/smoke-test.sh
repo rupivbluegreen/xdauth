@@ -28,9 +28,9 @@ poll=$(curl -fsS -X POST http://localhost:8080/auth/poll \
 echo "$poll" | grep -q '"status":"pending"'
 
 # xdauth-sshd (2323), not sshd/pam_exec (2222): pam_exec's helper blocks on approval before its stdout ever flushes, so within a short timeout the pam_exec path shows nothing by design (docs/ssh-demo.md "A note on prompt delivery") — xdauth-sshd delivers the same prompt live, proven by TestKeyboardInteractive_ChallengeDeliveredBeforeApproval
+# `script` allocates a real pty for the ssh client: without one, ssh treats stdin (from /dev/null below) as non-interactive and never renders the keyboard-interactive prompt at all, regardless of what the server sends
 echo "checking xdauth-sshd forwards the xdauth prompt over keyboard-interactive..."
-output=$(timeout 10 ssh -tt -o StrictHostKeyChecking=no -o PreferredAuthentications=keyboard-interactive \
-  -o PubkeyAuthentication=no -p 2323 testuser@localhost < /dev/null 2>&1 || true)
+output=$(script -qec "timeout 10 ssh -tt -o StrictHostKeyChecking=no -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no -p 2323 testuser@localhost" /dev/null < /dev/null 2>&1 || true)
 echo "$output" | grep -q "to finish signing in"
 
 echo "smoke test OK"

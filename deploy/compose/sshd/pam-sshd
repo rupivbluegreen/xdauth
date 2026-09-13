@@ -1,4 +1,4 @@
-auth required pam_exec.so quiet stdout /usr/local/bin/xdauth-pam http://host.docker.internal:8080
+auth required pam_exec.so quiet stdout /usr/local/bin/xdauth-pam http://localhost:8080
 account required pam_permit.so
 password required pam_deny.so
 session required pam_permit.so

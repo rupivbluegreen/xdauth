@@ -1,4 +1,4 @@
-auth required /usr/local/lib/security/xdauth_pam.so http://host.docker.internal:8080
+auth required /usr/local/lib/security/xdauth_pam.so http://localhost:8080
 account required pam_permit.so
 password required pam_deny.so
 session required pam_permit.so

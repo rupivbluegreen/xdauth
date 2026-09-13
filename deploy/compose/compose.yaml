@@ -26,16 +26,17 @@ services:
       XDAUTH_IDENTITY_CLAIM: "email"
       XDAUTH_SCOPES: "openid,email,profile"
 
+  # host networking, not a bridge + host.docker.internal: reaching the host-networked broker from a
+  # bridge-networked container through host-gateway routing is slow/unreliable in some Docker setups
+  # (observed hanging past the client library's own 10s HTTP timeout with no error surfaced at all).
+  # Same network namespace as broker sidesteps the indirection entirely.
   sshd:
     build:
       context: ../..
       dockerfile: deploy/compose/sshd/Dockerfile
     depends_on:
       - broker
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "2222:22"
+    network_mode: host
 
   # alternative SSH demo: a custom golang.org/x/crypto/ssh server instead of stock sshd + pam_exec, see docs/gossh-server.md
   xdauth-sshd:
@@ -44,10 +45,7 @@ services:
       dockerfile: deploy/compose/xdauth-sshd/Dockerfile
     depends_on:
       - broker
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    network_mode: host
     environment:
       XDAUTH_SSHD_LISTEN_ADDR: ":2323"
-      XDAUTH_BROKER_URL: "http://host.docker.internal:8080"
-    ports:
-      - "2323:2323"
+      XDAUTH_BROKER_URL: "http://localhost:8080"

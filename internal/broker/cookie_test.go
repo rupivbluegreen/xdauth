@@ -18,10 +18,13 @@ func TestSetSessionCookie_HTTPS(t *testing.T) {
 	setSessionCookie(w, r, "sess-123")
 
 	cookies := w.Result().Cookies()
-	require.Len(t, cookies, 1)
+	require.Len(t, cookies, 2)
 	require.Equal(t, "sess-123", cookies[0].Value)
+	require.Equal(t, "/", cookies[0].Path)
 	require.True(t, cookies[0].Secure)
 	require.Equal(t, http.SameSiteNoneMode, cookies[0].SameSite)
+	require.Equal(t, "/auth", cookies[1].Path)
+	require.Less(t, cookies[1].MaxAge, 0)
 }
 
 // TestSetSessionCookie_PlainHTTP is the local-dev fallback: SameSite=None without Secure is dropped by browsers, so it must stay Lax.
@@ -32,7 +35,7 @@ func TestSetSessionCookie_PlainHTTP(t *testing.T) {
 	setSessionCookie(w, r, "sess-456")
 
 	cookies := w.Result().Cookies()
-	require.Len(t, cookies, 1)
+	require.Len(t, cookies, 2)
 	require.False(t, cookies[0].Secure)
 	require.Equal(t, http.SameSiteLaxMode, cookies[0].SameSite)
 }
@@ -46,7 +49,7 @@ func TestSetSessionCookie_ForwardedHTTPS(t *testing.T) {
 	setSessionCookie(w, r, "sess-789")
 
 	cookies := w.Result().Cookies()
-	require.Len(t, cookies, 1)
+	require.Len(t, cookies, 2)
 	require.True(t, cookies[0].Secure)
 	require.Equal(t, http.SameSiteNoneMode, cookies[0].SameSite)
 }

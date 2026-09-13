@@ -297,8 +297,8 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, sessionID string) 
 		sameSite = http.SameSiteLaxMode
 	}
 	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- Secure/HttpOnly/SameSite are all set below, gosec can't see the conditional
-		Name:     sessionCookieName,
-		Value:    sessionID,
+		Name:  sessionCookieName,
+		Value: sessionID,
 		// Path "/" not "/auth": XDAUTH_SAML_ACS_URL/ACSURL can point the IdP callback at an arbitrary path (e.g. to match an SP already registered elsewhere), and the browser matches cookie Path against that public path, not the broker's internal route.
 		Path:     "/",
 		HttpOnly: true,
@@ -306,7 +306,7 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, sessionID string) 
 		SameSite: sameSite,
 	})
 	// Clear any cookie a pre-fix broker (Path "/auth") left behind: with both present, browsers send the more specific "/auth" one first on any /auth/* request, shadowing the new one with a stale session ID.
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- Secure/HttpOnly/SameSite are all set below, gosec can't see the conditional
 		Name:     sessionCookieName,
 		Value:    "",
 		Path:     "/auth",

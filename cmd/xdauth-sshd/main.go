@@ -75,7 +75,7 @@ func run() int {
 // loadOrGenerateHostKey reads a host key from disk, or generates a fresh in-memory ed25519 key for the life of this process.
 func loadOrGenerateHostKey(path string) (ssh.Signer, error) {
 	if path != "" {
-		keyBytes, err := os.ReadFile(path)
+		keyBytes, err := os.ReadFile(path) // #nosec G304 G703 -- path is an operator-supplied flag/env value, not attacker input
 		if err != nil {
 			return nil, fmt.Errorf("read host key file: %w", err)
 		}

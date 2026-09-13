@@ -25,6 +25,8 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    # non-blocking: golangci-lint's latest release can't yet read go1.26's export data format (x/crypto's CVE fixes require go1.26, so downgrading it to dodge this isn't an option); flip continue-on-error off once golangci-lint catches up
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpam0g-dev

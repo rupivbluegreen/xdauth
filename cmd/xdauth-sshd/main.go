@@ -64,7 +64,7 @@ func run() int {
 
 	go func() {
 		<-ctx.Done()
-		listener.Close()
+		_ = listener.Close()
 	}()
 
 	logger.Info("xdauth-sshd starting", "addr", *listenAddr, "broker_url", *brokerURL)

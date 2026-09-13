@@ -29,7 +29,7 @@ The client runs a standard **Authorization Code + PKCE** flow *by proxy* through
 3. **Requester context** — before approving, the browser page shows *what* is asking: client hostname, source IP, client kind, start time. The user approves *that*, not an anonymous "sign in to App X".
 4. **Identity match** — the identity the IdP returns must equal the `login_hint` the client sent. A session started for `alice` cannot be completed by `mallory`.
 
-Sessions are single-use, short-lived (default 5 minutes), and rate-limited per source and per hint. This is the mitigation set recommended by the IETF *Cross-Device Flows: Security Best Current Practice* (draft-ietf-oauth-cross-device-security), packaged so you don't have to build it yourself.
+Sessions are single-use, short-lived (default 5 minutes), and rate-limited per source and per hint. This is the mitigation set recommended by [RFC 10027](https://datatracker.ietf.org/doc/rfc10027/) (BCP 247, *Best Current Practice for Security of Cross-Device Flows*), packaged so you don't have to build it yourself.
 
 ```mermaid
 sequenceDiagram

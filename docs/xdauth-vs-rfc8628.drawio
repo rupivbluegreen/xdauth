@@ -1,0 +1,143 @@
+<mxfile host="app.diagrams.net" agent="xdauth" version="24.0.0">
+  <diagram id="xdauth-vs-rfc8628" name="xdauth vs RFC 8628">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1220" pageHeight="1060" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="RFC 8628 Device Authorization Grant vs. xdauth" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1140" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== RFC 8628 band ===================== -->
+        <mxCell id="rfc-band" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="55" width="1140" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="rfc-label" value="RFC 8628 &#8212; Device Authorization Grant" style="text;html=1;fontSize=17;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="62" width="600" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r1" value="1. Device requests a code&#10;POST /device_authorize" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="95" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="2. Client prints the code +&#10;URL for the user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="95" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" value="3. User logs into the IdP's&#10;own generic device page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="95" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" value="4. Token goes to whoever&#10;holds the device_code" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="870" y="95" width="230" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e-r1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="r1" target="r2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-r2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="r2" target="r3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-r3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="r3" target="r4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="gap" value="Gaps: the code isn't bound to&#10;the client, and the page shows&#10;no requester context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="600" y="195" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="storm" value="Storm-2372: attacker starts the&#10;flow, victim approves it, the&#10;attacker collects the token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="870" y="195" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gap" style="html=1;endArrow=none;dashed=1;strokeColor=#b85450;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="r3" target="gap"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-storm" style="html=1;endArrow=none;dashed=1;strokeColor=#b85450;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="r4" target="storm"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===================== xdauth band ===================== -->
+        <mxCell id="x-band" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf6ea;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="1140" height="480" as="geometry" />
+        </mxCell>
+        <mxCell id="x-label" value="xdauth &#8212; broker-owned Authorization Code + PKCE (or SAML) proxy" style="text;html=1;fontSize=17;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="317" width="800" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a1" value="1. Client &#8594; /auth/start&#10;PKCE challenge + login_hint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="350" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="2. Broker opens its OWN&#10;verification page" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="350" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="3. User visits the broker&#10;page (any device)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="350" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="4. Broker relays a real Auth&#10;Code+PKCE / SAML to the IdP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="870" y="350" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e-a1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-a2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="a2" target="a3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-a3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="a3" target="a4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="check1" value="CHECK 1 &#8211; PKCE&#10;verifier must match the&#10;challenge sent at start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="60" y="440" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e-check1" style="html=1;endArrow=none;dashed=1;strokeColor=#82b366;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="a1" target="check1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="b1" value="5. Normal login + MFA&#10;(unchanged)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="550" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="6. IdP calls back the&#10;BROKER; identity is bound" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="550" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="7. Broker page shows context;&#10;user enters code, Approves" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="600" y="550" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" value="8. Client polls &#8594; artifact&#10;released only if checks hold" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="870" y="550" width="230" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e-a4b1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="a4" target="b1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-b1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="b1" target="b2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-b2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="b2" target="b3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e-b3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="b3" target="b4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="check4" value="CHECK 4 &#8211; Identity match&#10;IdP identity must equal&#10;the login_hint sent at start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="330" y="640" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e-check4" style="html=1;endArrow=none;dashed=1;strokeColor=#82b366;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="b2" target="check4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="check3" value="CHECK 3 &#8211; Requester context&#10;shown before approval" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="600" y="640" width="230" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="check2" value="CHECK 2 &#8211; Number matching&#10;user types the client's code" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="600" y="710" width="230" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e-check3" style="html=1;endArrow=none;dashed=1;strokeColor=#82b366;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="b3" target="check3"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="Client can be fully air-gapped&#10;&#8212; only the broker needs IdP&#10;access. Sessions: 5 min,&#10;single-use, rate-limited." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;fontStyle=2;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="870" y="640" width="230" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="e-note" style="html=1;endArrow=none;dashed=1;strokeColor=#999999;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="b4" target="note"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===================== comparison table ===================== -->
+        <mxCell id="cmp-title" value="Why xdauth is safer" style="text;html=1;fontSize=16;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="815" width="400" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="th0" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="40" y="855" width="220" height="40" as="geometry" /></mxCell>
+        <mxCell id="th1" value="Client-bound" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="260" y="855" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="th2" value="Requester context" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="436" y="855" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="th3" value="Air-gapped" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="612" y="855" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="th4" value="Stock SSH client" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="788" y="855" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="th5" value="IdP support needed" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="964" y="855" width="176" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="r0h" value="RFC 8628 device code" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="40" y="895" width="220" height="40" as="geometry" /></mxCell>
+        <mxCell id="r0c1" value="no" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1"><mxGeometry x="260" y="895" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r0c2" value="no" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1"><mxGeometry x="436" y="895" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r0c3" value="yes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1"><mxGeometry x="612" y="895" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r0c4" value="yes (via PAM)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1"><mxGeometry x="788" y="895" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r0c5" value="broad" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1"><mxGeometry x="964" y="895" width="176" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="r1h" value="xdauth" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1"><mxGeometry x="40" y="935" width="220" height="40" as="geometry" /></mxCell>
+        <mxCell id="r1c1" value="yes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="260" y="935" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r1c2" value="yes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1"><mxGeometry x="436" y="935" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r1c3" value="yes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1"><mxGeometry x="612" y="935" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r1c4" value="yes (PAM or custom sshd)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1"><mxGeometry x="788" y="935" width="176" height="40" as="geometry" /></mxCell>
+        <mxCell id="r1c5" value="any OIDC or SAML 2.0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" vertex="1" parent="1"><mxGeometry x="964" y="935" width="176" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="footer" value="Mitigation set recommended by the IETF Cross-Device Flows: Security BCP (draft-ietf-oauth-cross-device-security) &#8212; xdauth packages it so you don't have to build it yourself." style="text;html=1;fontSize=11;fontStyle=2;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="985" width="1100" height="26" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

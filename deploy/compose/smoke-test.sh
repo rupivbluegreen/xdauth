@@ -14,16 +14,17 @@ echo "waiting for services..."
 wait_for http://localhost:8080/healthz
 wait_for http://localhost:5556/dex/.well-known/openid-configuration
 
+# code_challenge/code_verifier below are a real matching S256 PKCE pair; poll rejects a mismatch with 403 even while pending
 echo "checking /auth/start and /auth/poll..."
 start=$(curl -fsS -X POST http://localhost:8080/auth/start \
   -H 'Content-Type: application/json' \
-  -d '{"login_hint":"testuser","code_challenge":"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM","code_challenge_method":"S256","client_kind":"smoke-test","client_host":"ci"}')
+  -d '{"login_hint":"testuser","code_challenge":"y4cdL7BG4ds6wCyjiP37mb6VvZE-cGQKIvCMhnjpHws","code_challenge_method":"S256","client_kind":"smoke-test","client_host":"ci"}')
 echo "$start" | grep -q '"session_id"'
 session_id=$(echo "$start" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4)
 
 poll=$(curl -fsS -X POST http://localhost:8080/auth/poll \
   -H 'Content-Type: application/json' \
-  -d "{\"session_id\":\"$session_id\",\"code_verifier\":\"dGVzdC12ZXJpZmllci1kb2VzLW5vdC1tYXR0ZXI\"}")
+  -d "{\"session_id\":\"$session_id\",\"code_verifier\":\"WCfIhHoIVgfOP1X38azRCi9_wZ6dvIFYwvgskbmu85U\"}")
 echo "$poll" | grep -q '"status":"pending"'
 
 echo "checking sshd forwards the xdauth prompt over keyboard-interactive..."

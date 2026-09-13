@@ -35,6 +35,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+          install-mode: goinstall # the prebuilt binary can lag the module's go directive and refuse to run; goinstall builds it with the runner's own toolchain instead
           skip-cache: true # a stale cache from an earlier broken tree can corrupt module resolution
 
   govulncheck:

@@ -77,7 +77,7 @@ The broker never hands IdP tokens to the client. On approval it returns an **art
 - a broker-signed JWT, if you don't have your own issuer;
 - an SSH certificate (see above).
 
-Keeping IdP tokens inside the broker keeps their blast radius small and makes revocation a broker-side concern.
+Keeping IdP tokens inside the broker keeps their blast radius small and makes revocation a broker-side concern. The artifact itself carries a short `expires_at` (default 120s, `XDAUTH_ARTIFACT_TTL_SECONDS`): mint your own session immediately on receipt rather than persisting it.
 
 ## Provider notes
 

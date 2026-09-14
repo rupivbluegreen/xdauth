@@ -262,6 +262,7 @@ type artifactJSON struct {
 	Identity   string         `json:"identity"`
 	Claims     map[string]any `json:"claims"`
 	ApprovedAt time.Time      `json:"approved_at"`
+	ExpiresAt  time.Time      `json:"expires_at"`
 }
 
 func (b *Broker) handlePoll(w http.ResponseWriter, r *http.Request) {
@@ -277,7 +278,7 @@ func (b *Broker) handlePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, pollErr := poll(sess, req.CodeVerifier, time.Now())
+	result, pollErr := poll(sess, req.CodeVerifier, time.Now(), b.cfg.ArtifactTTL)
 	_ = b.store.Update(r.Context(), sess)
 
 	if pollErr != nil {
@@ -298,6 +299,7 @@ func (b *Broker) handlePoll(w http.ResponseWriter, r *http.Request) {
 			Identity:   result.Artifact.Identity,
 			Claims:     result.Artifact.Claims,
 			ApprovedAt: result.Artifact.ApprovedAt,
+			ExpiresAt:  result.Artifact.ExpiresAt,
 		}
 	}
 	writeJSON(w, http.StatusOK, resp)

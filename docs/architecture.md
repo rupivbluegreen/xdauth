@@ -39,6 +39,10 @@ The browser side is bound to one session by an `HttpOnly` cookie set in `handleV
 
 A separate per-session CSRF token, generated once identity is bound, is a hidden field in the approval form and checked in `handleApprove` — independent of the four phishing-resistance checks, this is ordinary web hygiene.
 
+## Artifact lifetime
+
+The `Artifact` `poll` releases carries its own `ExpiresAt` (default 120s from `Config.ArtifactTTL`, `XDAUTH_ARTIFACT_TTL_SECONDS`), independent of the session's own TTL (mitigation 10). Consumers should mint their own session on receipt, not persist the artifact.
+
 ## What's not built yet
 
 Everything in the README's "Components" table marked `later`: SSH certificate issuance, a native (cgo) PAM module, and a Helm chart. Also not built: a shared session store (Redis or similar) for a multi-replica broker — `Memory` is single-process only.

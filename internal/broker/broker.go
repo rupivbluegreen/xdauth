@@ -19,6 +19,7 @@ type Config struct {
 	PollInterval    time.Duration // "interval" returned to clients; default 3s
 	StartRatePerSec rate.Limit    // per-key /auth/start budget; default 1/5s
 	StartRateBurst  int           // default 5
+	ArtifactTTL     time.Duration // returned artifact's own lifetime; default 120s
 
 	IdentityNormalizer Normalizer // maps an identity claim value for comparison against login_hint
 
@@ -37,6 +38,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.StartRateBurst <= 0 {
 		c.StartRateBurst = 5
+	}
+	if c.ArtifactTTL <= 0 {
+		c.ArtifactTTL = 120 * time.Second
 	}
 	if c.Logger == nil {
 		c.Logger = slog.Default()

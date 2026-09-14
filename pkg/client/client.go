@@ -116,6 +116,7 @@ type Artifact struct {
 	Identity   string         `json:"identity"`
 	Claims     map[string]any `json:"claims"`
 	ApprovedAt time.Time      `json:"approved_at"`
+	ExpiresAt  time.Time      `json:"expires_at"`
 }
 
 // Result is the terminal outcome of Poll.

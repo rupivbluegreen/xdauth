@@ -46,6 +46,7 @@ func run() int {
 	protocol := flag.String("protocol", envOr("XDAUTH_PROTOCOL", "oidc"), "identity provider protocol: oidc or saml (env XDAUTH_PROTOCOL)")
 	sessionTTL := flag.Int("session-ttl-seconds", envIntOr("XDAUTH_SESSION_TTL_SECONDS", 300), "session TTL in seconds (env XDAUTH_SESSION_TTL_SECONDS)")
 	pollInterval := flag.Int("poll-interval-seconds", envIntOr("XDAUTH_POLL_INTERVAL_SECONDS", 3), "poll interval in seconds (env XDAUTH_POLL_INTERVAL_SECONDS)")
+	artifactTTL := flag.Int("artifact-ttl-seconds", envIntOr("XDAUTH_ARTIFACT_TTL_SECONDS", 120), "returned artifact's own lifetime in seconds (env XDAUTH_ARTIFACT_TTL_SECONDS)")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -85,6 +86,7 @@ func run() int {
 		BaseURL:      trimmedBaseURL,
 		SessionTTL:   time.Duration(*sessionTTL) * time.Second,
 		PollInterval: time.Duration(*pollInterval) * time.Second,
+		ArtifactTTL:  time.Duration(*artifactTTL) * time.Second,
 		Logger:       logger,
 	}, sessionStore, idp)
 

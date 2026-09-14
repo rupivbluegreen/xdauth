@@ -202,6 +202,7 @@ type Artifact struct {
 	Identity   string
 	Claims     map[string]any
 	ApprovedAt time.Time
+	ExpiresAt  time.Time // mitigation 10: artifact itself is short-lived
 }
 
 // PollResult is the full outcome of poll.
@@ -211,7 +212,8 @@ type PollResult struct {
 }
 
 // poll implements check 1 (PKCE) and single-use consumption of the approved artifact.
-func poll(s *store.Session, codeVerifier string, now time.Time) (PollResult, error) {
+// artifactTTL bounds the returned Artifact's own lifetime (mitigation 10).
+func poll(s *store.Session, codeVerifier string, now time.Time, artifactTTL time.Duration) (PollResult, error) {
 	if expireIfNeeded(s, now) {
 		return PollResult{Status: PollExpired}, nil
 	}
@@ -229,6 +231,7 @@ func poll(s *store.Session, codeVerifier string, now time.Time) (PollResult, err
 			Identity:   s.Identity.Value,
 			Claims:     s.Identity.Claims,
 			ApprovedAt: s.IdentityAt,
+			ExpiresAt:  s.IdentityAt.Add(artifactTTL),
 		}}, nil
 	}
 

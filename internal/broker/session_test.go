@@ -114,11 +114,11 @@ func TestPoll_PendingThenSlowDown(t *testing.T) {
 	s, _ := newSession(p, 5*time.Minute, 1*time.Minute)
 
 	now := time.Now()
-	res, err := poll(s, verifier, now)
+	res, err := poll(s, verifier, now, time.Minute)
 	require.NoError(t, err)
 	assert.Equal(t, PollPending, res.Status)
 
-	res, err = poll(s, verifier, now.Add(time.Second))
+	res, err = poll(s, verifier, now.Add(time.Second), time.Minute)
 	require.NoError(t, err)
 	assert.Equal(t, PollSlowDown, res.Status)
 }
@@ -129,21 +129,34 @@ func TestPoll_ApprovedIsSingleUse(t *testing.T) {
 	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
 	require.NoError(t, approve(s, s.UserCode, true, time.Now(), "b"))
 
-	res, err := poll(s, verifier, time.Now())
+	res, err := poll(s, verifier, time.Now(), time.Minute)
 	require.NoError(t, err)
 	require.Equal(t, PollApproved, res.Status)
 	require.NotNil(t, res.Artifact)
 
-	res, err = poll(s, verifier, time.Now())
+	res, err = poll(s, verifier, time.Now(), time.Minute)
 	require.NoError(t, err)
 	assert.Equal(t, PollExpired, res.Status, "a second poll after approval must never return approved again")
+}
+
+func TestPoll_ArtifactCarriesOwnExpiry(t *testing.T) {
+	p, verifier := testParams(t, "verifier-1")
+	s, _ := newSession(p, 5*time.Minute, 0)
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
+	require.NoError(t, approve(s, s.UserCode, true, time.Now(), "b"))
+
+	res, err := poll(s, verifier, time.Now(), 2*time.Minute)
+	require.NoError(t, err)
+	require.NotNil(t, res.Artifact)
+	assert.Equal(t, res.Artifact.ApprovedAt.Add(2*time.Minute), res.Artifact.ExpiresAt)
+	assert.True(t, res.Artifact.ExpiresAt.After(res.Artifact.ApprovedAt))
 }
 
 func TestPoll_ExpiredByTTL(t *testing.T) {
 	p, verifier := testParams(t, "verifier-1")
 	s, _ := newSession(p, time.Millisecond, 0)
 
-	res, err := poll(s, verifier, time.Now().Add(time.Second))
+	res, err := poll(s, verifier, time.Now().Add(time.Second), time.Minute)
 	require.NoError(t, err)
 	assert.Equal(t, PollExpired, res.Status)
 }

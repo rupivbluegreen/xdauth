@@ -33,14 +33,15 @@ type Identity struct {
 type Session struct {
 	ID string
 
-	LoginHint     string
-	CodeChallenge string // client's PKCE code_challenge (S256), never the verifier
-	ClientKind    string
-	ClientHost    string
-	ClientIP      string
-	Interval      time.Duration
-	CreatedAt     time.Time
-	ExpiresAt     time.Time
+	LoginHint      string
+	CodeChallenge  string // client's PKCE code_challenge (S256), never the verifier
+	ClientKind     string
+	ClientHost     string
+	ClientIP       string
+	VerifiedClient string // client id from ClientAuthenticator; empty if unauthenticated
+	Interval       time.Duration
+	CreatedAt      time.Time
+	ExpiresAt      time.Time
 
 	UserCode string // shown to the client, typed into the browser; never logged
 

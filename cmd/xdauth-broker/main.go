@@ -48,6 +48,7 @@ func run() int {
 	pollInterval := flag.Int("poll-interval-seconds", envIntOr("XDAUTH_POLL_INTERVAL_SECONDS", 3), "poll interval in seconds (env XDAUTH_POLL_INTERVAL_SECONDS)")
 	artifactTTL := flag.Int("artifact-ttl-seconds", envIntOr("XDAUTH_ARTIFACT_TTL_SECONDS", 120), "returned artifact's own lifetime in seconds (env XDAUTH_ARTIFACT_TTL_SECONDS)")
 	abuseWebhookURL := flag.String("abuse-webhook-url", os.Getenv("XDAUTH_ABUSE_WEBHOOK_URL"), "optional URL POSTed a SecurityEvent JSON body on suspected abuse (env XDAUTH_ABUSE_WEBHOOK_URL)")
+	clientAuthTokens := flag.String("client-auth-tokens", os.Getenv("XDAUTH_CLIENT_AUTH_TOKENS"), "optional token=client_id[,token=client_id...] list gating /auth/start (env XDAUTH_CLIENT_AUTH_TOKENS)")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -80,16 +81,23 @@ func run() int {
 		return 2
 	}
 
+	clientAuth, err := parseClientAuthTokens(*clientAuthTokens)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "xdauth-broker:", err)
+		return 2
+	}
+
 	sessionStore := store.NewMemory(30 * time.Second)
 	defer sessionStore.Close()
 
 	b := broker.New(broker.Config{
-		BaseURL:         trimmedBaseURL,
-		SessionTTL:      time.Duration(*sessionTTL) * time.Second,
-		PollInterval:    time.Duration(*pollInterval) * time.Second,
-		ArtifactTTL:     time.Duration(*artifactTTL) * time.Second,
-		AbuseWebhookURL: *abuseWebhookURL,
-		Logger:          logger,
+		BaseURL:             trimmedBaseURL,
+		SessionTTL:          time.Duration(*sessionTTL) * time.Second,
+		PollInterval:        time.Duration(*pollInterval) * time.Second,
+		ArtifactTTL:         time.Duration(*artifactTTL) * time.Second,
+		AbuseWebhookURL:     *abuseWebhookURL,
+		ClientAuthenticator: clientAuth,
+		Logger:              logger,
 	}, sessionStore, idp)
 
 	srv := &http.Server{
@@ -111,6 +119,22 @@ func run() int {
 		return 1
 	}
 	return 0
+}
+
+// parseClientAuthTokens parses "token=client_id,..."; empty input means no gating.
+func parseClientAuthTokens(raw string) (broker.ClientAuthenticator, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	tokens := make(map[string]string)
+	for _, pair := range strings.Split(raw, ",") {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return nil, fmt.Errorf("invalid XDAUTH_CLIENT_AUTH_TOKENS entry %q", pair)
+		}
+		tokens[parts[0]] = parts[1]
+	}
+	return broker.StaticTokenClientAuth{Tokens: tokens}, nil
 }
 
 // newOIDCProvider returns (provider, 0) on success, or (nil, exit code) on failure.

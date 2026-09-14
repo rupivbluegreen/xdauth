@@ -62,11 +62,12 @@ func hashBinding(secret string) string {
 
 // StartParams is what /auth/start needs to create a session.
 type StartParams struct {
-	LoginHint     string
-	CodeChallenge string
-	ClientKind    string
-	ClientHost    string
-	ClientIP      string
+	LoginHint      string
+	CodeChallenge  string
+	ClientKind     string
+	ClientHost     string
+	ClientIP       string
+	VerifiedClient string
 }
 
 // newSession creates a Pending session; ttl and interval come from broker config, never the client.
@@ -81,17 +82,18 @@ func newSession(p StartParams, ttl, interval time.Duration) (*store.Session, err
 	}
 	now := time.Now()
 	return &store.Session{
-		ID:            id,
-		LoginHint:     p.LoginHint,
-		CodeChallenge: p.CodeChallenge,
-		ClientKind:    p.ClientKind,
-		ClientHost:    p.ClientHost,
-		ClientIP:      p.ClientIP,
-		Interval:      interval,
-		CreatedAt:     now,
-		ExpiresAt:     now.Add(ttl),
-		UserCode:      code,
-		State:         store.StatePending,
+		ID:             id,
+		LoginHint:      p.LoginHint,
+		CodeChallenge:  p.CodeChallenge,
+		ClientKind:     p.ClientKind,
+		ClientHost:     p.ClientHost,
+		ClientIP:       p.ClientIP,
+		VerifiedClient: p.VerifiedClient,
+		Interval:       interval,
+		CreatedAt:      now,
+		ExpiresAt:      now.Add(ttl),
+		UserCode:       code,
+		State:          store.StatePending,
 	}, nil
 }
 

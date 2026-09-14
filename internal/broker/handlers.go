@@ -33,6 +33,16 @@ type startResponse struct {
 }
 
 func (b *Broker) handleStart(w http.ResponseWriter, r *http.Request) {
+	var verifiedClient string
+	if b.cfg.ClientAuthenticator != nil {
+		id, err := b.cfg.ClientAuthenticator.Authenticate(r)
+		if err != nil {
+			writeJSONError(w, http.StatusUnauthorized, "invalid_client", "client authentication failed")
+			return
+		}
+		verifiedClient = id
+	}
+
 	var req startRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid_request", "malformed JSON body")
@@ -56,11 +66,12 @@ func (b *Broker) handleStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sess, err := newSession(StartParams{
-		LoginHint:     req.LoginHint,
-		CodeChallenge: req.CodeChallenge,
-		ClientKind:    req.ClientKind,
-		ClientHost:    req.ClientHost,
-		ClientIP:      ip,
+		LoginHint:      req.LoginHint,
+		CodeChallenge:  req.CodeChallenge,
+		ClientKind:     req.ClientKind,
+		ClientHost:     req.ClientHost,
+		ClientIP:       ip,
+		VerifiedClient: verifiedClient,
 	}, b.cfg.SessionTTL, b.cfg.PollInterval)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "server_error", "could not create session")
@@ -418,13 +429,14 @@ func renderApprove(w http.ResponseWriter, sess *store.Session, baseURL string) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = templates.ExecuteTemplate(w, "approve.html", approvePage{
-		Identity:      identity,
-		ClientHost:    sess.ClientHost,
-		ClientKind:    sess.ClientKind,
-		ClientIP:      sess.ClientIP,
-		StartedAt:     sess.CreatedAt.Format(time.RFC1123),
-		CSRFToken:     sess.CSRFToken,
-		ApproveAction: baseURL + "/auth/approve",
+		Identity:       identity,
+		ClientHost:     sess.ClientHost,
+		ClientKind:     sess.ClientKind,
+		ClientIP:       sess.ClientIP,
+		VerifiedClient: sess.VerifiedClient,
+		StartedAt:      sess.CreatedAt.Format(time.RFC1123),
+		CSRFToken:      sess.CSRFToken,
+		ApproveAction:  baseURL + "/auth/approve",
 	})
 }
 

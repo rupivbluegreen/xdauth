@@ -19,13 +19,14 @@ func init() {
 
 // approvePage is the data approve.html renders; see templates_test.go for check 3 (context always shown).
 type approvePage struct {
-	Identity      string
-	ClientHost    string
-	ClientKind    string
-	ClientIP      string
-	StartedAt     string
-	CSRFToken     string
-	ApproveAction string
+	Identity       string
+	ClientHost     string
+	ClientKind     string
+	ClientIP       string
+	VerifiedClient string // non-empty iff ClientAuthenticator verified the caller
+	StartedAt      string
+	CSRFToken      string
+	ApproveAction  string
 }
 
 type resultPage struct {

@@ -26,6 +26,9 @@ type Config struct {
 
 	AbuseWebhookURL string // optional: POSTed a SecurityEvent JSON body on suspected_abuse
 
+	// ClientAuthenticator, if set, gates /auth/start (mitigations 7, 15).
+	ClientAuthenticator ClientAuthenticator
+
 	Logger *slog.Logger
 }
 

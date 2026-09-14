@@ -30,6 +30,14 @@ Comment out one check at a time and watch the corresponding phishing test fail:
 - Comment out the `normalize(...) != normalize(...)` check in `bindIdentity` → `TestPhishing_VictimIdentityDiffersFromLoginHint` fails.
 - Remove a field from `approve.html` → `TestApproveTemplate_AlwaysShowsRequesterContext` fails.
 
+## Client authentication (mitigations 7, 15)
+
+`/auth/start` is open by default (demo/local dev). Setting
+`XDAUTH_CLIENT_AUTH_TOKENS` (`token=client_id,...`) or wiring
+`broker.MTLSClientAuth` requires the caller to authenticate before a
+session is created, and the verified client id is shown on the approval
+page distinct from the self-reported `client_host`.
+
 ## Detect and remediate (mitigation 6)
 
 Wrong codes, identity mismatches, repeated `/auth/start` for one `login_hint`,

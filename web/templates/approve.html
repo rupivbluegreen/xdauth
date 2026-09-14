@@ -21,6 +21,7 @@
     <dt>Client host</dt><dd>{{.ClientHost}}</dd>
     <dt>Client kind</dt><dd>{{.ClientKind}}</dd>
     <dt>Source IP</dt><dd>{{.ClientIP}}</dd>
+    {{if .VerifiedClient}}<dt>Verified client</dt><dd>{{.VerifiedClient}} (authenticated)</dd>{{end}}
     <dt>Started at</dt><dd>{{.StartedAt}}</dd>
     <dt>Identity</dt><dd>{{.Identity}}</dd>
   </dl>

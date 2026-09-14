@@ -46,8 +46,8 @@ sequenceDiagram
     B->>I: Authorization Code + PKCE (broker is a confidential client)
     I->>U: normal login, MFA, Conditional Access
     I->>B: GET /auth/callback?code=…
-    B->>B: validate ID token (issuer, audience, nonce, JWKS); bind identity to session
-    B-->>U: "Approve login for alice from host-42 (10.1.2.3) at 10:32? Enter the code on your terminal"
+    B->>B: validate ID token (issuer, audience, nonce, JWKS), bind identity to session
+    B-->>U: Approve login for alice from host-42 (10.1.2.3) at 10:32? Enter the code on your terminal
     U->>B: POST /auth/approve {user_code}
     loop every `interval`
         C->>B: POST /auth/poll {session_id, code_verifier}

@@ -14,6 +14,7 @@ import (
 )
 
 const sessionCookieName = "xdauth_session"
+const approvalCookieName = "xdauth_approve"
 
 type startRequest struct {
 	LoginHint           string `json:"login_hint"`
@@ -96,6 +97,12 @@ func (b *Broker) handleVerify(w http.ResponseWriter, r *http.Request) {
 
 	switch sess.State {
 	case store.StateAwaitingApproval:
+		if !approvalBindingMatches(r, sess) {
+			// not the browser that authenticated: refuse, no cookie
+			renderResult(w, http.StatusForbidden, "Continue on your device",
+				"This sign-in is waiting for approval on the browser where you signed in. Please continue there.")
+			return
+		}
 		setSessionCookie(w, r, sess.ID)
 		renderApprove(w, sess, b.cfg.BaseURL)
 		return
@@ -158,7 +165,12 @@ func (b *Broker) handleIdPResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bindErr := bindIdentity(sess, ident, b.cfg.IdentityNormalizer, now)
+	approvalSecret, err := newApprovalSecret()
+	if err != nil {
+		renderResult(w, http.StatusInternalServerError, "Error", "This sign-in request could not be completed.")
+		return
+	}
+	bindErr := bindIdentity(sess, ident, b.cfg.IdentityNormalizer, now, hashBinding(approvalSecret))
 	_ = b.store.Update(r.Context(), sess)
 
 	if bindErr != nil {
@@ -171,6 +183,7 @@ func (b *Broker) handleIdPResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setApprovalCookie(w, r, approvalSecret)
 	logTransition(r.Context(), b.cfg.Logger, sess.ID, "identity_bound", "severity", "info")
 	renderApprove(w, sess, b.cfg.BaseURL)
 }
@@ -209,8 +222,9 @@ func (b *Broker) handleApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	approvalSecret, _ := readApprovalCookie(r)
 	now := time.Now()
-	appErr := approve(sess, req.UserCode, req.Approve, now)
+	appErr := approve(sess, req.UserCode, req.Approve, now, approvalSecret)
 	_ = b.store.Update(r.Context(), sess)
 
 	switch {
@@ -222,6 +236,9 @@ func (b *Broker) handleApprove(w http.ResponseWriter, r *http.Request) {
 		renderResult(w, http.StatusOK, "Denied", "Sign-in denied.")
 	case errors.Is(appErr, ErrExpired):
 		renderResult(w, http.StatusGone, "Expired", "This sign-in request has expired.")
+	case errors.Is(appErr, ErrApprovalNotBound):
+		logTransition(r.Context(), b.cfg.Logger, sess.ID, "approval_not_bound", "severity", "warn")
+		renderResult(w, http.StatusForbidden, "Continue on your device", "This sign-in is waiting for approval on the browser where you signed in. Please continue there.")
 	case appErr != nil:
 		renderApprove(w, sess, b.cfg.BaseURL)
 	default:
@@ -324,6 +341,40 @@ func readSessionCookie(r *http.Request) (string, bool) {
 		return "", false
 	}
 	return c.Value, true
+}
+
+// setApprovalCookie binds this browser to sess's later approval.
+func setApprovalCookie(w http.ResponseWriter, r *http.Request, secret string) {
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	sameSite := http.SameSiteNoneMode
+	if !secure {
+		sameSite = http.SameSiteLaxMode
+	}
+	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- flags set explicitly below
+		Name:     approvalCookieName,
+		Value:    secret,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+	})
+}
+
+func readApprovalCookie(r *http.Request) (string, bool) {
+	c, err := r.Cookie(approvalCookieName)
+	if err != nil || c.Value == "" {
+		return "", false
+	}
+	return c.Value, true
+}
+
+// approvalBindingMatches: true iff r carries the secret bound at bindIdentity.
+func approvalBindingMatches(r *http.Request, sess *store.Session) bool {
+	secret, ok := readApprovalCookie(r)
+	if !ok || sess.ApprovalBindingHash == "" {
+		return false
+	}
+	return constantTimeStringEqual(hashBinding(secret), sess.ApprovalBindingHash)
 }
 
 func clientIP(r *http.Request) string {

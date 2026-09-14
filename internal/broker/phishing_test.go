@@ -17,8 +17,8 @@ func TestPhishing_LegitimatePathSucceeds(t *testing.T) {
 	s, err := newSession(p, 5*time.Minute, 0)
 	require.NoError(t, err)
 
-	require.NoError(t, bindIdentity(s, store.Identity{Subject: "sub-alice", Value: "alice"}, nil, time.Now()))
-	require.NoError(t, approve(s, s.UserCode, true, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Subject: "sub-alice", Value: "alice"}, nil, time.Now(), hashBinding("b")))
+	require.NoError(t, approve(s, s.UserCode, true, time.Now(), "b"))
 
 	res, err := poll(s, verifier, time.Now())
 	require.NoError(t, err)
@@ -33,8 +33,8 @@ func TestPhishing_AttackerLacksVerifier(t *testing.T) {
 	s, err := newSession(p, 5*time.Minute, 0)
 	require.NoError(t, err)
 
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
-	require.NoError(t, approve(s, s.UserCode, true, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
+	require.NoError(t, approve(s, s.UserCode, true, time.Now(), "b"))
 
 	_, err = poll(s, "not-the-real-verifier", time.Now())
 	require.ErrorIs(t, err, ErrInvalidVerifier, "poll with the wrong verifier must never approve")
@@ -46,7 +46,7 @@ func TestPhishing_VictimEntersNoCode(t *testing.T) {
 	s, err := newSession(p, 5*time.Minute, 0)
 	require.NoError(t, err)
 
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
 
 	res, err := poll(s, verifier, time.Now())
 	require.NoError(t, err)
@@ -59,8 +59,8 @@ func TestPhishing_VictimEntersWrongCode(t *testing.T) {
 	s, err := newSession(p, 5*time.Minute, 0)
 	require.NoError(t, err)
 
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
-	require.Error(t, approve(s, "0000-0000", true, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
+	require.Error(t, approve(s, "0000-0000", true, time.Now(), "b"))
 
 	res, err := poll(s, verifier, time.Now())
 	require.NoError(t, err)
@@ -74,16 +74,38 @@ func TestPhishing_VictimIdentityDiffersFromLoginHint(t *testing.T) {
 	s, err := newSession(p, 5*time.Minute, 0)
 	require.NoError(t, err)
 
-	bindErr := bindIdentity(s, store.Identity{Subject: "sub-mallory", Value: "mallory"}, nil, time.Now())
+	bindErr := bindIdentity(s, store.Identity{Subject: "sub-mallory", Value: "mallory"}, nil, time.Now(), hashBinding("b"))
 	require.ErrorIs(t, bindErr, ErrIdentityMismatch)
 	require.Equal(t, store.StateDenied, s.State, "identity mismatch must deny, not merely skip approval")
 
-	approveErr := approve(s, s.UserCode, true, time.Now())
+	approveErr := approve(s, s.UserCode, true, time.Now(), "b")
 	require.ErrorIs(t, approveErr, ErrWrongState, "a denied session cannot be approved afterwards")
 
 	res, err := poll(s, verifier, time.Now())
 	require.NoError(t, err)
 	assert.Equal(t, PollDenied, res.Status)
+}
+
+// TestPhishing_ApprovalRequiresAuthenticatedBrowsersBinding: wrong binding secret never approves.
+func TestPhishing_ApprovalRequiresAuthenticatedBrowsersBinding(t *testing.T) {
+	p, verifier := testParams(t, "attacker-verifier")
+	s, err := newSession(p, 5*time.Minute, 0)
+	require.NoError(t, err)
+
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("victim-secret")))
+
+	approveErr := approve(s, s.UserCode, true, time.Now(), "attacker-guess")
+	require.ErrorIs(t, approveErr, ErrApprovalNotBound)
+	assert.Equal(t, store.StateAwaitingApproval, s.State, "wrong binding must not move state at all")
+
+	res, err := poll(s, verifier, time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, PollPending, res.Status)
+
+	require.NoError(t, approve(s, s.UserCode, true, time.Now(), "victim-secret"))
+	res, err = poll(s, verifier, time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, PollApproved, res.Status, "the correctly-bound browser can still approve")
 }
 
 // TestPhishing_ExpiredSessionNeverApproves: the attacker waits past the TTL before polling.
@@ -103,8 +125,8 @@ func TestPhishing_ReplayedSessionNeverApprovesTwice(t *testing.T) {
 	s, err := newSession(p, 5*time.Minute, 0)
 	require.NoError(t, err)
 
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
-	require.NoError(t, approve(s, s.UserCode, true, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
+	require.NoError(t, approve(s, s.UserCode, true, time.Now(), "b"))
 
 	first, err := poll(s, verifier, time.Now())
 	require.NoError(t, err)

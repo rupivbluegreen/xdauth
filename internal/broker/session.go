@@ -3,6 +3,8 @@ package broker
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -19,6 +21,7 @@ var (
 	ErrWrongState       = errors.New("session is not in a state that allows this operation")
 	ErrInvalidVerifier  = errors.New("code_verifier does not match code_challenge")
 	ErrIdentityMismatch = errors.New("authenticated identity does not match login_hint")
+	ErrApprovalNotBound = errors.New("approval not bound to the browser that authenticated")
 )
 
 // Normalizer maps an identity claim value into a form comparable against login_hint.
@@ -40,6 +43,21 @@ func newCSRFToken() (string, error) {
 		return "", fmt.Errorf("generate csrf token: %w", err)
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// newApprovalSecret returns a random per-browser approval-binding secret.
+func newApprovalSecret() (string, error) {
+	b := make([]byte, 24)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate approval secret: %w", err)
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// hashBinding returns the value stored/compared for an approval secret.
+func hashBinding(secret string) string {
+	sum := sha256.Sum256([]byte(secret))
+	return hex.EncodeToString(sum[:])
 }
 
 // StartParams is what /auth/start needs to create a session.
@@ -107,7 +125,8 @@ func isTerminal(st store.State) bool {
 }
 
 // bindIdentity attaches the verified IdP identity and enforces check 4 (identity match) immediately.
-func bindIdentity(s *store.Session, ident store.Identity, normalize Normalizer, now time.Time) error {
+// approvalBindingHash locks later approval to the browser that completed this login.
+func bindIdentity(s *store.Session, ident store.Identity, normalize Normalizer, now time.Time, approvalBindingHash string) error {
 	if expireIfNeeded(s, now) {
 		return ErrExpired
 	}
@@ -130,6 +149,7 @@ func bindIdentity(s *store.Session, ident store.Identity, normalize Normalizer, 
 		return err
 	}
 	s.CSRFToken = token
+	s.ApprovalBindingHash = approvalBindingHash
 	s.State = store.StateAwaitingApproval
 	return nil
 }
@@ -137,12 +157,17 @@ func bindIdentity(s *store.Session, ident store.Identity, normalize Normalizer, 
 const maxApproveAttempts = 5
 
 // approve implements check 2 (number matching); an explicit deny always denies regardless of the code.
-func approve(s *store.Session, submittedCode string, decisionApprove bool, now time.Time) error {
+// presentedBinding must match the secret from bindIdentity's approvalBindingHash.
+func approve(s *store.Session, submittedCode string, decisionApprove bool, now time.Time, presentedBinding string) error {
 	if expireIfNeeded(s, now) {
 		return ErrExpired
 	}
 	if s.State != store.StateAwaitingApproval {
 		return ErrWrongState
+	}
+	if s.ApprovalBindingHash == "" ||
+		subtle.ConstantTimeCompare([]byte(hashBinding(presentedBinding)), []byte(s.ApprovalBindingHash)) != 1 {
+		return ErrApprovalNotBound
 	}
 	if !decisionApprove {
 		s.State = store.StateDenied

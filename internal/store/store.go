@@ -57,6 +57,8 @@ type Session struct {
 	ApproveAttempts int
 	CSRFToken       string
 
+	ApprovalBindingHash string // sha256 of the approving browser's secret
+
 	LastPollAt time.Time // enforces the poll interval (slow_down)
 
 	State    State

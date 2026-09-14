@@ -8,16 +8,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/big"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/rupivbluegreen/xdauth/internal/oidc"
@@ -196,4 +199,97 @@ func TestIntegration_EndToEndApproval(t *testing.T) {
 	require.Equal(t, "approved", poll.Status)
 	require.NotNil(t, poll.Artifact)
 	require.Equal(t, "alice", poll.Artifact.Identity)
+}
+
+// TestIntegration_UnauthenticatedBrowserCannotApprove is the WS1 regression
+// test: reopening the link in a second browser must not yield a session
+// cookie or CSRF token, and approving from it must never reach "approved".
+func TestIntegration_UnauthenticatedBrowserCannotApprove(t *testing.T) {
+	ctx := context.Background()
+	idp := newFakeIdP("alice")
+	idpServer := httptest.NewServer(idp.handler())
+	defer idpServer.Close()
+	idp.issuer = idpServer.URL
+
+	var realHandler http.Handler
+	brokerServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		realHandler.ServeHTTP(w, r)
+	}))
+	brokerURL := "http://" + brokerServer.Listener.Addr().String()
+	defer brokerServer.Close()
+
+	provider, err := oidc.New(ctx, oidc.Config{
+		IssuerURL:    idp.issuer,
+		ClientID:     "xdauth-test",
+		ClientSecret: "test-secret",
+		RedirectURL:  brokerURL + "/auth/callback",
+	})
+	require.NoError(t, err)
+
+	sessionStore := store.NewMemory(time.Minute)
+	defer sessionStore.Close()
+	b := New(Config{BaseURL: brokerURL, Logger: slog.Default()}, sessionStore, provider)
+	realHandler = b.Router()
+	brokerServer.Start()
+
+	victimJar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	victim := &http.Client{Jar: victimJar}
+
+	startBody := fmt.Sprintf(`{"login_hint":"alice","code_challenge":"%s","code_challenge_method":"S256","client_kind":"cli","client_host":"attacker-controlled-host"}`, challengeFor("attacker-verifier"))
+	startResp, err := http.Post(brokerServer.URL+"/auth/start", "application/json", strings.NewReader(startBody))
+	require.NoError(t, err)
+	var start startResponse
+	require.NoError(t, json.NewDecoder(startResp.Body).Decode(&start))
+	startResp.Body.Close()
+
+	// victim authenticates via the IdP; never types or sees a code.
+	verifyResp, err := victim.Get(start.VerificationURI)
+	require.NoError(t, err)
+	victimPage, err := io.ReadAll(verifyResp.Body)
+	require.NoError(t, err)
+	verifyResp.Body.Close()
+
+	sess, err := sessionStore.Get(ctx, start.SessionID)
+	require.NoError(t, err)
+	require.Equal(t, store.StateAwaitingApproval, sess.State)
+	require.Contains(t, string(victimPage), sess.CSRFToken, "the authenticated browser must still get the approve form")
+
+	// attacker reopens the same link in a fresh, cookie-less browser.
+	attackerJar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	attacker := &http.Client{Jar: attackerJar}
+
+	attackerVerify, err := attacker.Get(start.VerificationURI)
+	require.NoError(t, err)
+	attackerPage, err := io.ReadAll(attackerVerify.Body)
+	require.NoError(t, err)
+	attackerVerify.Body.Close()
+
+	assert.Equal(t, http.StatusForbidden, attackerVerify.StatusCode)
+	assert.NotContains(t, string(attackerPage), sess.CSRFToken, "attacker's browser must not receive the approve form")
+	assert.Empty(t, attackerJar.Cookies(mustParseURL(t, brokerServer.URL)), "attacker's browser must not receive any cookie")
+
+	// attacker, holding the code from /auth/start, tries to approve anyway.
+	approveResp, err := attacker.PostForm(brokerServer.URL+"/auth/approve", map[string][]string{
+		"csrf_token": {sess.CSRFToken}, "user_code": {start.UserCode}, "decision": {"approve"},
+	})
+	require.NoError(t, err)
+	approveResp.Body.Close()
+
+	pollBody := fmt.Sprintf(`{"session_id":"%s","code_verifier":"attacker-verifier"}`, start.SessionID)
+	pollResp, err := http.Post(brokerServer.URL+"/auth/poll", "application/json", strings.NewReader(pollBody))
+	require.NoError(t, err)
+	var pollOut pollResponse
+	require.NoError(t, json.NewDecoder(pollResp.Body).Decode(&pollOut))
+	pollResp.Body.Close()
+
+	assert.NotEqual(t, "approved", pollOut.Status, "the attacker must never receive the artifact")
+}
+
+func mustParseURL(t *testing.T, raw string) *url.URL {
+	t.Helper()
+	u, err := url.Parse(raw)
+	require.NoError(t, err)
+	return u
 }

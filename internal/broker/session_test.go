@@ -45,7 +45,7 @@ func TestBindIdentity_MatchTransitionsToAwaitingApproval(t *testing.T) {
 	p, _ := testParams(t, "verifier-1")
 	s, _ := newSession(p, 5*time.Minute, 3*time.Second)
 
-	err := bindIdentity(s, store.Identity{Subject: "sub-1", Value: "alice"}, nil, time.Now())
+	err := bindIdentity(s, store.Identity{Subject: "sub-1", Value: "alice"}, nil, time.Now(), hashBinding("b"))
 	require.NoError(t, err)
 	assert.Equal(t, store.StateAwaitingApproval, s.State)
 	assert.NotEmpty(t, s.CSRFToken)
@@ -55,7 +55,7 @@ func TestBindIdentity_MismatchDeniesImmediately(t *testing.T) {
 	p, _ := testParams(t, "verifier-1")
 	s, _ := newSession(p, 5*time.Minute, 3*time.Second)
 
-	err := bindIdentity(s, store.Identity{Subject: "sub-2", Value: "mallory"}, nil, time.Now())
+	err := bindIdentity(s, store.Identity{Subject: "sub-2", Value: "mallory"}, nil, time.Now(), hashBinding("b"))
 	require.ErrorIs(t, err, ErrIdentityMismatch)
 	assert.Equal(t, store.StateDenied, s.State)
 }
@@ -65,7 +65,7 @@ func TestBindIdentity_CaseInsensitiveByDefault(t *testing.T) {
 	p.LoginHint = "Alice@Example.com"
 	s, _ := newSession(p, 5*time.Minute, 3*time.Second)
 
-	err := bindIdentity(s, store.Identity{Subject: "sub-1", Value: "alice@example.com"}, nil, time.Now())
+	err := bindIdentity(s, store.Identity{Subject: "sub-1", Value: "alice@example.com"}, nil, time.Now(), hashBinding("b"))
 	require.NoError(t, err)
 	assert.Equal(t, store.StateAwaitingApproval, s.State)
 }
@@ -73,14 +73,14 @@ func TestBindIdentity_CaseInsensitiveByDefault(t *testing.T) {
 func TestApprove_WrongCodeThenCorrect(t *testing.T) {
 	p, _ := testParams(t, "verifier-1")
 	s, _ := newSession(p, 5*time.Minute, 3*time.Second)
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
 
-	err := approve(s, "WRONG-CODE", true, time.Now())
+	err := approve(s, "WRONG-CODE", true, time.Now(), "b")
 	require.Error(t, err)
 	assert.Equal(t, store.StateAwaitingApproval, s.State)
 	assert.Equal(t, 1, s.ApproveAttempts)
 
-	err = approve(s, s.UserCode, true, time.Now())
+	err = approve(s, s.UserCode, true, time.Now(), "b")
 	require.NoError(t, err)
 	assert.Equal(t, store.StateApproved, s.State)
 }
@@ -88,23 +88,23 @@ func TestApprove_WrongCodeThenCorrect(t *testing.T) {
 func TestApprove_TooManyWrongCodesDenies(t *testing.T) {
 	p, _ := testParams(t, "verifier-1")
 	s, _ := newSession(p, 5*time.Minute, 3*time.Second)
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
 
 	for i := 0; i < maxApproveAttempts; i++ {
-		_ = approve(s, "WRONG-CODE", true, time.Now())
+		_ = approve(s, "WRONG-CODE", true, time.Now(), "b")
 	}
 	assert.Equal(t, store.StateDenied, s.State)
 
-	err := approve(s, s.UserCode, true, time.Now())
+	err := approve(s, s.UserCode, true, time.Now(), "b")
 	require.ErrorIs(t, err, ErrWrongState)
 }
 
 func TestApprove_ExplicitDenyIgnoresCode(t *testing.T) {
 	p, _ := testParams(t, "verifier-1")
 	s, _ := newSession(p, 5*time.Minute, 3*time.Second)
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
 
-	err := approve(s, s.UserCode, false, time.Now())
+	err := approve(s, s.UserCode, false, time.Now(), "b")
 	require.NoError(t, err)
 	assert.Equal(t, store.StateDenied, s.State)
 }
@@ -126,8 +126,8 @@ func TestPoll_PendingThenSlowDown(t *testing.T) {
 func TestPoll_ApprovedIsSingleUse(t *testing.T) {
 	p, verifier := testParams(t, "verifier-1")
 	s, _ := newSession(p, 5*time.Minute, 0)
-	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now()))
-	require.NoError(t, approve(s, s.UserCode, true, time.Now()))
+	require.NoError(t, bindIdentity(s, store.Identity{Value: "alice"}, nil, time.Now(), hashBinding("b")))
+	require.NoError(t, approve(s, s.UserCode, true, time.Now(), "b"))
 
 	res, err := poll(s, verifier, time.Now())
 	require.NoError(t, err)

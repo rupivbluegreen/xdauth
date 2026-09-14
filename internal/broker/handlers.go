@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"time"
 
@@ -59,7 +58,11 @@ func (b *Broker) handleStart(w http.ResponseWriter, r *http.Request) {
 
 	b.detector.Observe(EventRepeatedStart, req.LoginHint, "", time.Now())
 
-	ip := clientIP(r)
+	ip := resolveClientIP(r, b.cfg.TrustedProxies)
+	if !isAllowedClient(ip, b.cfg.AllowedClientCIDRs) {
+		writeJSONError(w, http.StatusForbidden, "network_not_allowed", "this network is not permitted to start sign-ins")
+		return
+	}
 	if !b.ipLimiter.Allow(ip) || !b.hintLimiter.Allow(req.LoginHint) {
 		writeJSONError(w, http.StatusTooManyRequests, "rate_limited", "too many session starts; try again later")
 		return
@@ -253,7 +256,7 @@ func (b *Broker) handleApprove(w http.ResponseWriter, r *http.Request) {
 		logTransition(r.Context(), b.cfg.Logger, sess.ID, "approval_not_bound", "severity", "warn")
 		renderResult(w, http.StatusForbidden, "Continue on your device", "This sign-in is waiting for approval on the browser where you signed in. Please continue there.")
 	case appErr != nil:
-		b.detector.Observe(EventWrongCode, clientIP(r), sess.ID, now)
+		b.detector.Observe(EventWrongCode, resolveClientIP(r, b.cfg.TrustedProxies), sess.ID, now)
 		renderApprove(w, sess, b.cfg.BaseURL)
 	default:
 		renderResult(w, http.StatusOK, "Done", "This request has been processed.")
@@ -297,7 +300,7 @@ func (b *Broker) handlePoll(w http.ResponseWriter, r *http.Request) {
 	_ = b.store.Update(r.Context(), sess)
 
 	if wasConsumed && result.Status == PollExpired {
-		b.detector.Observe(EventConsumedReplay, clientIP(r), sess.ID, time.Now())
+		b.detector.Observe(EventConsumedReplay, resolveClientIP(r, b.cfg.TrustedProxies), sess.ID, time.Now())
 	}
 
 	if pollErr != nil {
@@ -396,14 +399,6 @@ func approvalBindingMatches(r *http.Request, sess *store.Session) bool {
 		return false
 	}
 	return constantTimeStringEqual(hashBinding(secret), sess.ApprovalBindingHash)
-}
-
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

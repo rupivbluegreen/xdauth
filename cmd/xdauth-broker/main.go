@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strconv"
@@ -49,6 +50,8 @@ func run() int {
 	artifactTTL := flag.Int("artifact-ttl-seconds", envIntOr("XDAUTH_ARTIFACT_TTL_SECONDS", 120), "returned artifact's own lifetime in seconds (env XDAUTH_ARTIFACT_TTL_SECONDS)")
 	abuseWebhookURL := flag.String("abuse-webhook-url", os.Getenv("XDAUTH_ABUSE_WEBHOOK_URL"), "optional URL POSTed a SecurityEvent JSON body on suspected abuse (env XDAUTH_ABUSE_WEBHOOK_URL)")
 	clientAuthTokens := flag.String("client-auth-tokens", os.Getenv("XDAUTH_CLIENT_AUTH_TOKENS"), "optional token=client_id[,token=client_id...] list gating /auth/start (env XDAUTH_CLIENT_AUTH_TOKENS)")
+	trustedProxies := flag.String("trusted-proxies", os.Getenv("XDAUTH_TRUSTED_PROXIES"), "comma-separated CIDRs allowed to set X-Forwarded-For (env XDAUTH_TRUSTED_PROXIES)")
+	allowedClientCIDRs := flag.String("allowed-client-cidrs", os.Getenv("XDAUTH_ALLOWED_CLIENT_CIDRS"), "optional comma-separated CIDRs allowed to call /auth/start (env XDAUTH_ALLOWED_CLIENT_CIDRS)")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -86,6 +89,16 @@ func run() int {
 		fmt.Fprintln(os.Stderr, "xdauth-broker:", err)
 		return 2
 	}
+	trustedProxyPrefixes, err := parseCIDRList(*trustedProxies)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "xdauth-broker: XDAUTH_TRUSTED_PROXIES:", err)
+		return 2
+	}
+	allowedClientPrefixes, err := parseCIDRList(*allowedClientCIDRs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "xdauth-broker: XDAUTH_ALLOWED_CLIENT_CIDRS:", err)
+		return 2
+	}
 
 	sessionStore := store.NewMemory(30 * time.Second)
 	defer sessionStore.Close()
@@ -97,6 +110,8 @@ func run() int {
 		ArtifactTTL:         time.Duration(*artifactTTL) * time.Second,
 		AbuseWebhookURL:     *abuseWebhookURL,
 		ClientAuthenticator: clientAuth,
+		TrustedProxies:      trustedProxyPrefixes,
+		AllowedClientCIDRs:  allowedClientPrefixes,
 		Logger:              logger,
 	}, sessionStore, idp)
 
@@ -135,6 +150,22 @@ func parseClientAuthTokens(raw string) (broker.ClientAuthenticator, error) {
 		tokens[parts[0]] = parts[1]
 	}
 	return broker.StaticTokenClientAuth{Tokens: tokens}, nil
+}
+
+// parseCIDRList parses a comma-separated CIDR list; empty input returns nil.
+func parseCIDRList(raw string) ([]netip.Prefix, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	var out []netip.Prefix
+	for _, part := range strings.Split(raw, ",") {
+		p, err := netip.ParsePrefix(strings.TrimSpace(part))
+		if err != nil {
+			return nil, fmt.Errorf("invalid CIDR %q: %w", part, err)
+		}
+		out = append(out, p)
+	}
+	return out, nil
 }
 
 // newOIDCProvider returns (provider, 0) on success, or (nil, exit code) on failure.

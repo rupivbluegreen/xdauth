@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -28,6 +29,11 @@ type Config struct {
 
 	// ClientAuthenticator, if set, gates /auth/start (mitigations 7, 15).
 	ClientAuthenticator ClientAuthenticator
+
+	// TrustedProxies: peers allowed to set X-Forwarded-For; unset means direct RemoteAddr only.
+	TrustedProxies []netip.Prefix
+	// AllowedClientCIDRs: if set, only these networks may call /auth/start (mitigation 8).
+	AllowedClientCIDRs []netip.Prefix
 
 	Logger *slog.Logger
 }

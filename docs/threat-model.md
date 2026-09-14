@@ -38,6 +38,14 @@ Comment out one check at a time and watch the corresponding phishing test fail:
 session is created, and the verified client id is shown on the approval
 page distinct from the self-reported `client_host`.
 
+## Trusted networks and client IP (mitigation 8)
+
+`resolveClientIP` (`internal/broker/clientip.go`) trusts `X-Forwarded-For`
+only from peers in `XDAUTH_TRUSTED_PROXIES`; behind an untrusted or
+unconfigured proxy every client previously collapsed into one rate-limit
+bucket keyed on the proxy's own address. `XDAUTH_ALLOWED_CLIENT_CIDRS`
+optionally restricts `/auth/start` to specific networks.
+
 ## Detect and remediate (mitigation 6)
 
 Wrong codes, identity mismatches, repeated `/auth/start` for one `login_hint`,

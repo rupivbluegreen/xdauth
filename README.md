@@ -104,7 +104,7 @@ This is an authentication component; a bug here is a credential compromise. Befo
 - a written threat model (attacker-initiated session, code interception, replay, token theft from the broker, malicious client host, compromised verification page);
 - a **phishing test suite in CI** that proves the headline claim: an attacker-initiated session cannot be completed by a victim, under every combination of the four checks being individually bypassed;
 - independent review of the broker;
-- signed releases (Sigstore/cosign), SBOM, reproducible container builds;
+- signed releases (Sigstore/cosign), SBOM, reproducible container builds — mechanism in place (`.goreleaser.yaml`, `.github/workflows/release.yml`), no tagged release cut yet;
 - a security disclosure policy.
 
 ## Comparison

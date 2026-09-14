@@ -1,0 +1,106 @@
+version: 2
+
+project_name: xdauth
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  # xdauth-pam-native (cgo, experimental) is deliberately excluded: it
+  # doesn't build without libpam headers and isn't recommended (see
+  # docs/native-pam-status.md).
+  - id: xdauth-broker
+    main: ./cmd/xdauth-broker
+    binary: xdauth-broker
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags: ["-s -w"]
+  - id: xdauth-login
+    main: ./cmd/xdauth-login
+    binary: xdauth-login
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags: ["-s -w"]
+  - id: xdauth-pam
+    main: ./cmd/xdauth-pam
+    binary: xdauth-pam
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags: ["-s -w"]
+  - id: xdauth-sshd
+    main: ./cmd/xdauth-sshd
+    binary: xdauth-sshd
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags: ["-s -w"]
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+
+sboms:
+  - id: archive-sboms
+    artifacts: archive
+    documents: ["{{ .ArtifactName }}.sbom.json"]
+
+dockers_v2:
+  - id: xdauth-broker
+    ids: [xdauth-broker]
+    dockerfile: Dockerfile.goreleaser
+    images:
+      - "ghcr.io/rupivbluegreen/xdauth-broker"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+
+docker_signs:
+  - id: xdauth-broker-sign
+    cmd: cosign
+    artifacts: manifests
+    output: true
+    args:
+      - "sign"
+      - "--yes" # keyless (OIDC): CI has no key to prompt for
+      - "${artifact}"
+
+signs:
+  - id: checksum-sign
+    cmd: cosign
+    args:
+      - "sign-blob"
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    artifacts: checksum
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+
+release:
+  github:
+    owner: rupivbluegreen
+    name: xdauth
+  footer: >-
+    See `docs/threat-model.md` and `docs/rfc10027-compliance.md` for what
+    this release does and does not guarantee. Verify signatures per
+    SECURITY.md before deploying.

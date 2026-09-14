@@ -71,7 +71,7 @@ a `SecurityEvent` (never a code, verifier, or token) to it. See
 - **No independent review yet.** This is one implementer's read of the IETF Cross-Device Flows BCP; treat it as such until reviewed.
 - **Session store is not encrypted at rest.** Neither `Memory` nor `Redis` encrypts the `code_challenge`/`user_code`; both rely on TTL expiry to bound exposure.
 - **Rate limiting and the abuse detector are per-broker-process**, not shared across replicas, even when a shared `Redis` store is configured.
-- **No signed releases, SBOM, or reproducible builds yet** — see the README roadmap.
+- **Releases aren't cut yet**, but the mechanism is in place: `.goreleaser.yaml` builds `xdauth-broker`/`xdauth-login`/`xdauth-pam`/`xdauth-sshd` reproducibly (`-trimpath`, commit-timestamped), generates an SPDX SBOM per archive, builds and signs the broker's multi-arch container image, and signs the checksums file — all via `.github/workflows/release.yml` on a `v*` tag push, using cosign's keyless (OIDC) signing so no long-lived signing key is stored in CI.
 
 ## What is explicitly not this project's job
 

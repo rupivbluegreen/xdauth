@@ -56,10 +56,10 @@ a `SecurityEvent` (never a code, verifier, or token) to it. See
 
 ## Known gaps in this MVP
 
-- **In-memory session store.** A broker restart loses all in-flight sessions (they just have to be restarted by the client) and a multi-replica deployment needs a shared store this MVP doesn't provide — see `docs/architecture.md`.
+- **In-memory session store is still the default**; `internal/store.Redis` is available for multi-replica deployments (`XDAUTH_REDIS_ADDR`) — see `docs/architecture.md`.
 - **No independent review yet.** This is one implementer's read of the IETF Cross-Device Flows BCP; treat it as such until reviewed.
-- **Session store is not encrypted at rest** (it's in-memory, so "at rest" doesn't quite apply, but a future Redis-backed store should encrypt or at least not persist the `code_challenge`/`user_code` longer than the TTL).
-- **Rate limiting is per-broker-process**, not shared across replicas.
+- **Session store is not encrypted at rest.** Neither `Memory` nor `Redis` encrypts the `code_challenge`/`user_code`; both rely on TTL expiry to bound exposure.
+- **Rate limiting and the abuse detector are per-broker-process**, not shared across replicas, even when a shared `Redis` store is configured.
 - **No signed releases, SBOM, or reproducible builds yet** — see the README roadmap.
 
 ## What is explicitly not this project's job

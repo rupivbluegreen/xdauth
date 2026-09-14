@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/rupivbluegreen/xdauth/internal/broker"
 	"github.com/rupivbluegreen/xdauth/internal/oidc"
 	"github.com/rupivbluegreen/xdauth/internal/saml"
@@ -52,6 +54,7 @@ func run() int {
 	clientAuthTokens := flag.String("client-auth-tokens", os.Getenv("XDAUTH_CLIENT_AUTH_TOKENS"), "optional token=client_id[,token=client_id...] list gating /auth/start (env XDAUTH_CLIENT_AUTH_TOKENS)")
 	trustedProxies := flag.String("trusted-proxies", os.Getenv("XDAUTH_TRUSTED_PROXIES"), "comma-separated CIDRs allowed to set X-Forwarded-For (env XDAUTH_TRUSTED_PROXIES)")
 	allowedClientCIDRs := flag.String("allowed-client-cidrs", os.Getenv("XDAUTH_ALLOWED_CLIENT_CIDRS"), "optional comma-separated CIDRs allowed to call /auth/start (env XDAUTH_ALLOWED_CLIENT_CIDRS)")
+	redisAddr := flag.String("redis-addr", os.Getenv("XDAUTH_REDIS_ADDR"), "optional host:port of a shared Redis session store; unset uses in-memory, single-process storage (env XDAUTH_REDIS_ADDR)")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -100,7 +103,7 @@ func run() int {
 		return 2
 	}
 
-	sessionStore := store.NewMemory(30 * time.Second)
+	sessionStore := newSessionStore(*redisAddr)
 	defer sessionStore.Close()
 
 	b := broker.New(broker.Config{
@@ -150,6 +153,18 @@ func parseClientAuthTokens(raw string) (broker.ClientAuthenticator, error) {
 		tokens[parts[0]] = parts[1]
 	}
 	return broker.StaticTokenClientAuth{Tokens: tokens}, nil
+}
+
+// newSessionStore: Redis when XDAUTH_REDIS_ADDR is set, else single-process Memory.
+func newSessionStore(redisAddr string) store.Store {
+	if redisAddr == "" {
+		return store.NewMemory(30 * time.Second)
+	}
+	client := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: os.Getenv("XDAUTH_REDIS_PASSWORD"),
+	})
+	return store.NewRedis(store.RedisConfig{Client: client})
 }
 
 // parseCIDRList parses a comma-separated CIDR list; empty input returns nil.

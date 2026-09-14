@@ -43,6 +43,10 @@ A separate per-session CSRF token, generated once identity is bound, is a hidden
 
 The `Artifact` `poll` releases carries its own `ExpiresAt` (default 120s from `Config.ArtifactTTL`, `XDAUTH_ARTIFACT_TTL_SECONDS`), independent of the session's own TTL (mitigation 10). Consumers should mint their own session on receipt, not persist the artifact.
 
+## Shared session store
+
+`internal/store.Redis` (`XDAUTH_REDIS_ADDR`) implements the same `Store` interface as `Memory`, verified against a shared conformance suite (`internal/store/conformance_test.go`), so a multi-replica broker deployment isn't limited to single-process `Memory`. Rate limiting (`internal/broker/ratelimit.go`) and the abuse detector (`internal/broker/detect.go`) remain per-process even with a Redis store — sharing those across replicas is tracked separately.
+
 ## What's not built yet
 
-Everything in the README's "Components" table marked `later`: SSH certificate issuance, a native (cgo) PAM module, and a Helm chart. Also not built: a shared session store (Redis or similar) for a multi-replica broker — `Memory` is single-process only.
+Everything in the README's "Components" table marked `later`: SSH certificate issuance, a native (cgo) PAM module, and a Helm chart.

@@ -22,6 +22,12 @@ type Config struct {
 	RedirectURL   string
 	Scopes        []string // "openid" is added automatically if missing
 	IdentityClaim string   // ID-token claim read as the identity value, e.g. "preferred_username"
+
+	// RequiredAMR, if non-empty, requires the ID token's "amr" claim (RFC
+	// 8176) to include at least one of these values, e.g. "hwk" or "swk"
+	// for a FIDO2/WebAuthn credential (RFC 10027 §6.2.3): the IdP, not
+	// xdauth, verifies proximity and phishing resistance.
+	RequiredAMR []string
 }
 
 // Provider is the broker's confidential OIDC client.
@@ -124,12 +130,40 @@ func (p *Provider) Exchange(ctx context.Context, code string, pkce PKCEPair, exp
 		return nil, fmt.Errorf("decode claims: %w", err)
 	}
 
+	if len(p.cfg.RequiredAMR) > 0 && !amrSatisfies(claims, p.cfg.RequiredAMR) {
+		return nil, fmt.Errorf("id_token amr claim does not include a required authentication method")
+	}
+
 	value, _ := claims[p.cfg.IdentityClaim].(string)
 	if value == "" {
 		return nil, fmt.Errorf("identity claim %q missing or empty", p.cfg.IdentityClaim)
 	}
 
 	return &Identity{Subject: idToken.Subject, Value: value, Claims: claims}, nil
+}
+
+// amrSatisfies reports whether claims' "amr" (RFC 8176) includes any of required.
+func amrSatisfies(claims map[string]any, required []string) bool {
+	raw, ok := claims["amr"]
+	if !ok {
+		return false
+	}
+	list, ok := raw.([]any)
+	if !ok {
+		return false
+	}
+	have := make(map[string]bool, len(list))
+	for _, v := range list {
+		if s, ok := v.(string); ok {
+			have[s] = true
+		}
+	}
+	for _, want := range required {
+		if have[want] {
+			return true
+		}
+	}
+	return false
 }
 
 // BeginLogin implements broker.IdentityProvider: it stores this leg's PKCE/state/nonce on sess.

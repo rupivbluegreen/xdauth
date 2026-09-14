@@ -48,6 +48,15 @@ unconfigured proxy every client previously collapsed into one rate-limit
 bucket keyed on the proxy's own address. `XDAUTH_ALLOWED_CLIENT_CIDRS`
 optionally restricts `/auth/start` to specific networks.
 
+## Delegated proximity via required authentication method (mitigation 1)
+
+`XDAUTH_REQUIRE_AMR` (`oidc.Config.RequiredAMR`) rejects any ID token whose
+`amr` claim (RFC 8176) doesn't include a listed value, e.g. `hwk`/`swk` for
+a FIDO2/WebAuthn credential. This delegates proximity verification to the
+IdP entirely — xdauth never becomes a WebAuthn relying party — and is
+meaningful only where the two devices genuinely can be near each other; it
+does not apply to (and doesn't attempt to fix) the air-gapped core case.
+
 ## Detect and remediate (mitigation 6)
 
 Wrong codes, identity mismatches, repeated `/auth/start` for one `login_hint`,

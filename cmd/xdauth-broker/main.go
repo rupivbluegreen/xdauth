@@ -30,6 +30,14 @@ func envOr(key, def string) string {
 	return def
 }
 
+// splitNonEmpty splits a comma-separated list, returning nil for an empty string.
+func splitNonEmpty(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	return strings.Split(raw, ",")
+}
+
 func envIntOr(key string, def int) int {
 	if v := os.Getenv(key); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
@@ -189,6 +197,7 @@ func newOIDCProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 	clientID := os.Getenv("XDAUTH_CLIENT_ID")
 	identityClaim := envOr("XDAUTH_IDENTITY_CLAIM", "preferred_username")
 	scopes := envOr("XDAUTH_SCOPES", "openid,profile")
+	requiredAMR := splitNonEmpty(os.Getenv("XDAUTH_REQUIRE_AMR"))
 
 	clientSecret := os.Getenv("XDAUTH_CLIENT_SECRET")
 	if path := os.Getenv("XDAUTH_CLIENT_SECRET_FILE"); path != "" {
@@ -213,6 +222,7 @@ func newOIDCProvider(ctx context.Context, logger *slog.Logger, baseURL string) (
 			RedirectURL:   baseURL + "/auth/callback",
 			Scopes:        strings.Split(scopes, ","),
 			IdentityClaim: identityClaim,
+			RequiredAMR:   requiredAMR,
 		})
 	})
 	if err != nil {

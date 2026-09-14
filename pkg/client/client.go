@@ -88,7 +88,7 @@ func Start(ctx context.Context, req StartRequest) (*Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("xdauth/client: start request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var wire startWireResponse
 	if err := json.NewDecoder(resp.Body).Decode(&wire); err != nil {
@@ -185,7 +185,7 @@ func (s *Session) pollOnce(ctx context.Context) (string, *Artifact, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("xdauth/client: poll request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var wire pollWireResponse
 	if err := json.NewDecoder(resp.Body).Decode(&wire); err != nil {

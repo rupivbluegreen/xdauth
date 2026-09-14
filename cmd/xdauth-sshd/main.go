@@ -60,7 +60,7 @@ func run() int {
 		logger.Error("listen", "error", err)
 		return 1
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	go func() {
 		<-ctx.Done()
@@ -160,13 +160,13 @@ func serve(ctx context.Context, listener net.Listener, config *ssh.ServerConfig,
 
 // handleConn runs the SSH handshake (which drives the keyboard-interactive auth above) and then serves session channels.
 func handleConn(nConn net.Conn, config *ssh.ServerConfig, shellMessage string, logger *slog.Logger) {
-	defer nConn.Close()
+	defer func() { _ = nConn.Close() }()
 	sshConn, chans, reqs, err := ssh.NewServerConn(nConn, config)
 	if err != nil {
 		logger.Warn("handshake failed", "remote", nConn.RemoteAddr().String(), "error", err)
 		return
 	}
-	defer sshConn.Close()
+	defer func() { _ = sshConn.Close() }()
 	go ssh.DiscardRequests(reqs)
 
 	for newChannel := range chans {
@@ -185,7 +185,7 @@ func handleConn(nConn net.Conn, config *ssh.ServerConfig, shellMessage string, l
 
 // serveSession is a trivial demo shell: it prints a message identifying the approved user and exits.
 func serveSession(channel ssh.Channel, requests <-chan *ssh.Request, shellMessage string, perms *ssh.Permissions) {
-	defer channel.Close()
+	defer func() { _ = channel.Close() }()
 	for req := range requests {
 		switch req.Type {
 		case "shell", "exec":
@@ -196,7 +196,7 @@ func serveSession(channel ssh.Channel, requests <-chan *ssh.Request, shellMessag
 			if perms != nil {
 				identity = perms.Extensions["xdauth-identity"]
 			}
-			fmt.Fprintf(channel, "%s\nlogged in as: %s\n", shellMessage, identity)
+			_, _ = fmt.Fprintf(channel, "%s\nlogged in as: %s\n", shellMessage, identity)
 			return
 		case "pty-req":
 			if req.WantReply {

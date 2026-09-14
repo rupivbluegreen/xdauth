@@ -45,8 +45,8 @@ func (f *fakeIdP) handler() http.Handler {
 	})
 	mux.HandleFunc("/jwks.json", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		n := base64.RawURLEncoding.EncodeToString(f.key.PublicKey.N.Bytes())
-		e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(f.key.PublicKey.E)).Bytes())
+		n := base64.RawURLEncoding.EncodeToString(f.key.N.Bytes())
+		e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(f.key.E)).Bytes())
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]any{{
 			"kty": "RSA", "use": "sig", "alg": "RS256", "kid": "k", "n": n, "e": e,
 		}}})

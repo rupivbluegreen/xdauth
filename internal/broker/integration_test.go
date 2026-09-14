@@ -71,8 +71,8 @@ func (f *fakeIdP) discovery(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (f *fakeIdP) jwks(w http.ResponseWriter, _ *http.Request) {
-	n := base64.RawURLEncoding.EncodeToString(f.key.PublicKey.N.Bytes())
-	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(f.key.PublicKey.E)).Bytes())
+	n := base64.RawURLEncoding.EncodeToString(f.key.N.Bytes())
+	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(f.key.E)).Bytes())
 	writeJSONTest(w, map[string]any{"keys": []map[string]any{{
 		"kty": "RSA", "use": "sig", "alg": "RS256", "kid": "test-key", "n": n, "e": e,
 	}}})
@@ -88,7 +88,7 @@ func (f *fakeIdP) authorize(w http.ResponseWriter, r *http.Request) {
 		clientID:      q.Get("client_id"),
 		redirectURI:   q.Get("redirect_uri"),
 	}
-	http.Redirect(w, r, q.Get("redirect_uri")+"?code="+code+"&state="+q.Get("state"), http.StatusFound)
+	http.Redirect(w, r, q.Get("redirect_uri")+"?code="+code+"&state="+q.Get("state"), http.StatusFound) // #nosec G710 -- test-only fake IdP, redirect_uri is the test's own broker URL
 }
 
 func (f *fakeIdP) token(w http.ResponseWriter, r *http.Request) {
@@ -173,12 +173,12 @@ func TestIntegration_EndToEndApproval(t *testing.T) {
 	require.NoError(t, err)
 	var start startResponse
 	require.NoError(t, json.NewDecoder(startResp.Body).Decode(&start))
-	startResp.Body.Close()
+	_ = startResp.Body.Close()
 	require.NotEmpty(t, start.SessionID)
 
 	verifyResp, err := client.Get(start.VerificationURI)
 	require.NoError(t, err)
-	verifyResp.Body.Close()
+	_ = verifyResp.Body.Close()
 
 	sess, err := sessionStore.Get(ctx, start.SessionID)
 	require.NoError(t, err)
@@ -188,14 +188,14 @@ func TestIntegration_EndToEndApproval(t *testing.T) {
 		"csrf_token": {sess.CSRFToken}, "user_code": {start.UserCode}, "decision": {"approve"},
 	})
 	require.NoError(t, err)
-	approveResp.Body.Close()
+	_ = approveResp.Body.Close()
 
 	pollBody := fmt.Sprintf(`{"session_id":"%s","code_verifier":"client-verifier"}`, start.SessionID)
 	pollResp, err := client.Post(brokerServer.URL+"/auth/poll", "application/json", strings.NewReader(pollBody))
 	require.NoError(t, err)
 	var poll pollResponse
 	require.NoError(t, json.NewDecoder(pollResp.Body).Decode(&poll))
-	pollResp.Body.Close()
+	_ = pollResp.Body.Close()
 
 	require.Equal(t, "approved", poll.Status)
 	require.NotNil(t, poll.Artifact)
@@ -242,14 +242,14 @@ func TestIntegration_UnauthenticatedBrowserCannotApprove(t *testing.T) {
 	require.NoError(t, err)
 	var start startResponse
 	require.NoError(t, json.NewDecoder(startResp.Body).Decode(&start))
-	startResp.Body.Close()
+	_ = startResp.Body.Close()
 
 	// victim authenticates via the IdP; never types or sees a code.
 	verifyResp, err := victim.Get(start.VerificationURI)
 	require.NoError(t, err)
 	victimPage, err := io.ReadAll(verifyResp.Body)
 	require.NoError(t, err)
-	verifyResp.Body.Close()
+	_ = verifyResp.Body.Close()
 
 	sess, err := sessionStore.Get(ctx, start.SessionID)
 	require.NoError(t, err)
@@ -265,7 +265,7 @@ func TestIntegration_UnauthenticatedBrowserCannotApprove(t *testing.T) {
 	require.NoError(t, err)
 	attackerPage, err := io.ReadAll(attackerVerify.Body)
 	require.NoError(t, err)
-	attackerVerify.Body.Close()
+	_ = attackerVerify.Body.Close()
 
 	assert.Equal(t, http.StatusForbidden, attackerVerify.StatusCode)
 	assert.NotContains(t, string(attackerPage), sess.CSRFToken, "attacker's browser must not receive the approve form")
@@ -276,14 +276,14 @@ func TestIntegration_UnauthenticatedBrowserCannotApprove(t *testing.T) {
 		"csrf_token": {sess.CSRFToken}, "user_code": {start.UserCode}, "decision": {"approve"},
 	})
 	require.NoError(t, err)
-	approveResp.Body.Close()
+	_ = approveResp.Body.Close()
 
 	pollBody := fmt.Sprintf(`{"session_id":"%s","code_verifier":"attacker-verifier"}`, start.SessionID)
 	pollResp, err := http.Post(brokerServer.URL+"/auth/poll", "application/json", strings.NewReader(pollBody))
 	require.NoError(t, err)
 	var pollOut pollResponse
 	require.NoError(t, json.NewDecoder(pollResp.Body).Decode(&pollOut))
-	pollResp.Body.Close()
+	_ = pollResp.Body.Close()
 
 	assert.NotEqual(t, "approved", pollOut.Status, "the attacker must never receive the artifact")
 }
@@ -327,11 +327,11 @@ func TestIntegration_AbuseSignalsAreLogged(t *testing.T) {
 	require.NoError(t, err)
 	var start startResponse
 	require.NoError(t, json.NewDecoder(startResp.Body).Decode(&start))
-	startResp.Body.Close()
+	_ = startResp.Body.Close()
 
 	verifyResp, err := client.Get(start.VerificationURI)
 	require.NoError(t, err)
-	verifyResp.Body.Close()
+	_ = verifyResp.Body.Close()
 	sess, err := sessionStore.Get(ctx, start.SessionID)
 	require.NoError(t, err)
 
@@ -339,23 +339,23 @@ func TestIntegration_AbuseSignalsAreLogged(t *testing.T) {
 		"csrf_token": {sess.CSRFToken}, "user_code": {"0000-0000"}, "decision": {"approve"},
 	})
 	require.NoError(t, err)
-	wrongResp.Body.Close()
+	_ = wrongResp.Body.Close()
 	assert.Contains(t, logBuf.String(), EventWrongCode, "a wrong code must surface as a security event")
 
 	approveResp, err := client.PostForm(brokerServer.URL+"/auth/approve", map[string][]string{
 		"csrf_token": {sess.CSRFToken}, "user_code": {start.UserCode}, "decision": {"approve"},
 	})
 	require.NoError(t, err)
-	approveResp.Body.Close()
+	_ = approveResp.Body.Close()
 
 	pollBody := fmt.Sprintf(`{"session_id":"%s","code_verifier":"v"}`, start.SessionID)
 	firstPoll, err := client.Post(brokerServer.URL+"/auth/poll", "application/json", strings.NewReader(pollBody))
 	require.NoError(t, err)
-	firstPoll.Body.Close()
+	_ = firstPoll.Body.Close()
 
 	secondPoll, err := client.Post(brokerServer.URL+"/auth/poll", "application/json", strings.NewReader(pollBody))
 	require.NoError(t, err)
-	secondPoll.Body.Close()
+	_ = secondPoll.Body.Close()
 	assert.Contains(t, logBuf.String(), EventConsumedReplay, "replaying a consumed session must surface as a security event")
 }
 

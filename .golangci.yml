@@ -1,16 +1,17 @@
+version: "2"
+
 run:
   timeout: 5m
 
 linters:
   enable:
-    - errcheck
-    - govet
-    - staticcheck
-    - unused
-    - gosec
     - bodyclose
     - gocritic
+    - gosec
 
-issues:
-  exclude-dirs:
-    - deploy
+  exclusions:
+    paths:
+      - deploy
+      # experimental, not working (docs/native-pam-status.md); gocritic
+      # misreads its cgo pointer comparisons as duplicate subexpressions.
+      - cmd/xdauth-pam-native

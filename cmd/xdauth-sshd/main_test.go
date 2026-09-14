@@ -71,7 +71,7 @@ func startTestServer(t *testing.T, ctx context.Context, brokerURL string) string
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
-	t.Cleanup(func() { listener.Close() })
+	t.Cleanup(func() { _ = listener.Close() })
 
 	go serve(ctx, listener, config, "demo shell", testLogger())
 	return listener.Addr().String()
@@ -97,7 +97,7 @@ func TestKeyboardInteractive_ChallengeDeliveredBeforeApproval(t *testing.T) {
 				return []string{}, nil
 			}),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // #nosec G106 -- test dials its own ephemeral local server
 		Timeout:         5 * time.Second,
 	}
 
@@ -105,7 +105,7 @@ func TestKeyboardInteractive_ChallengeDeliveredBeforeApproval(t *testing.T) {
 	go func() {
 		conn, err := ssh.Dial("tcp", addr, clientConfig)
 		if err == nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 		dialDone <- err
 	}()
@@ -164,7 +164,7 @@ func TestKeyboardInteractive_DeniedFailsClosed(t *testing.T) {
 				return []string{}, nil
 			}),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // #nosec G106 -- test dials its own ephemeral local server
 		Timeout:         5 * time.Second,
 	}
 

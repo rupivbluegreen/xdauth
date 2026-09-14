@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -285,6 +286,77 @@ func TestIntegration_UnauthenticatedBrowserCannotApprove(t *testing.T) {
 	pollResp.Body.Close()
 
 	assert.NotEqual(t, "approved", pollOut.Status, "the attacker must never receive the artifact")
+}
+
+// TestIntegration_AbuseSignalsAreLogged is the WS3 regression test: a wrong
+// code and a replayed poll must each surface as a logged security event.
+func TestIntegration_AbuseSignalsAreLogged(t *testing.T) {
+	ctx := context.Background()
+	idp := newFakeIdP("alice")
+	idpServer := httptest.NewServer(idp.handler())
+	defer idpServer.Close()
+	idp.issuer = idpServer.URL
+
+	var realHandler http.Handler
+	brokerServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		realHandler.ServeHTTP(w, r)
+	}))
+	brokerURL := "http://" + brokerServer.Listener.Addr().String()
+	defer brokerServer.Close()
+
+	provider, err := oidc.New(ctx, oidc.Config{
+		IssuerURL: idp.issuer, ClientID: "xdauth-test", ClientSecret: "s",
+		RedirectURL: brokerURL + "/auth/callback",
+	})
+	require.NoError(t, err)
+
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logBuf, nil))
+	sessionStore := store.NewMemory(time.Minute)
+	defer sessionStore.Close()
+	b := New(Config{BaseURL: brokerURL, Logger: logger}, sessionStore, provider)
+	realHandler = b.Router()
+	brokerServer.Start()
+
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+	client := &http.Client{Jar: jar}
+
+	startBody := fmt.Sprintf(`{"login_hint":"alice","code_challenge":"%s","code_challenge_method":"S256","client_kind":"cli","client_host":"h"}`, challengeFor("v"))
+	startResp, err := client.Post(brokerServer.URL+"/auth/start", "application/json", strings.NewReader(startBody))
+	require.NoError(t, err)
+	var start startResponse
+	require.NoError(t, json.NewDecoder(startResp.Body).Decode(&start))
+	startResp.Body.Close()
+
+	verifyResp, err := client.Get(start.VerificationURI)
+	require.NoError(t, err)
+	verifyResp.Body.Close()
+	sess, err := sessionStore.Get(ctx, start.SessionID)
+	require.NoError(t, err)
+
+	wrongResp, err := client.PostForm(brokerServer.URL+"/auth/approve", map[string][]string{
+		"csrf_token": {sess.CSRFToken}, "user_code": {"0000-0000"}, "decision": {"approve"},
+	})
+	require.NoError(t, err)
+	wrongResp.Body.Close()
+	assert.Contains(t, logBuf.String(), EventWrongCode, "a wrong code must surface as a security event")
+
+	approveResp, err := client.PostForm(brokerServer.URL+"/auth/approve", map[string][]string{
+		"csrf_token": {sess.CSRFToken}, "user_code": {start.UserCode}, "decision": {"approve"},
+	})
+	require.NoError(t, err)
+	approveResp.Body.Close()
+
+	pollBody := fmt.Sprintf(`{"session_id":"%s","code_verifier":"v"}`, start.SessionID)
+	firstPoll, err := client.Post(brokerServer.URL+"/auth/poll", "application/json", strings.NewReader(pollBody))
+	require.NoError(t, err)
+	firstPoll.Body.Close()
+
+	secondPoll, err := client.Post(brokerServer.URL+"/auth/poll", "application/json", strings.NewReader(pollBody))
+	require.NoError(t, err)
+	secondPoll.Body.Close()
+	assert.Contains(t, logBuf.String(), EventConsumedReplay, "replaying a consumed session must surface as a security event")
 }
 
 func mustParseURL(t *testing.T, raw string) *url.URL {

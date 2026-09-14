@@ -30,6 +30,14 @@ Comment out one check at a time and watch the corresponding phishing test fail:
 - Comment out the `normalize(...) != normalize(...)` check in `bindIdentity` → `TestPhishing_VictimIdentityDiffersFromLoginHint` fails.
 - Remove a field from `approve.html` → `TestApproveTemplate_AlwaysShowsRequesterContext` fails.
 
+## Detect and remediate (mitigation 6)
+
+Wrong codes, identity mismatches, repeated `/auth/start` for one `login_hint`,
+and replayed polls of a consumed session are counted per key; a threshold
+trip logs `suspected_abuse` and, if `XDAUTH_ABUSE_WEBHOOK_URL` is set, POSTs
+a `SecurityEvent` (never a code, verifier, or token) to it. See
+`internal/broker/detect.go`.
+
 ## Known gaps in this MVP
 
 - **In-memory session store.** A broker restart loses all in-flight sessions (they just have to be restarted by the client) and a multi-replica deployment needs a shared store this MVP doesn't provide — see `docs/architecture.md`.

@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -22,6 +23,8 @@ type Config struct {
 	ArtifactTTL     time.Duration // returned artifact's own lifetime; default 120s
 
 	IdentityNormalizer Normalizer // maps an identity claim value for comparison against login_hint
+
+	AbuseWebhookURL string // optional: POSTed a SecurityEvent JSON body on suspected_abuse
 
 	Logger *slog.Logger
 }
@@ -54,18 +57,34 @@ type Broker struct {
 	idp         IdentityProvider
 	ipLimiter   *keyedLimiter
 	hintLimiter *keyedLimiter
+	detector    *detector
+	webhook     *abuseWebhook // nil if AbuseWebhookURL is unset
 }
 
 // New builds a Broker. The caller owns st's and idp's lifecycle.
 func New(cfg Config, st store.Store, idp IdentityProvider) *Broker {
 	cfg.applyDefaults()
 	idleTTL := cfg.SessionTTL * 4
-	return &Broker{
+	b := &Broker{
 		cfg:         cfg,
 		store:       st,
 		idp:         idp,
 		ipLimiter:   newKeyedLimiter(cfg.StartRatePerSec, cfg.StartRateBurst, idleTTL),
 		hintLimiter: newKeyedLimiter(cfg.StartRatePerSec, cfg.StartRateBurst, idleTTL),
+	}
+	if cfg.AbuseWebhookURL != "" {
+		b.webhook = newAbuseWebhook(cfg.AbuseWebhookURL, nil)
+	}
+	b.detector = newDetector(defaultAbuseThresholds(), b.onSecurityEvent)
+	return b
+}
+
+// onSecurityEvent logs every abuse signal and forwards suspected_abuse to the webhook.
+func (b *Broker) onSecurityEvent(evt SecurityEvent) {
+	logTransition(context.Background(), b.cfg.Logger, evt.SessionID, evt.Kind,
+		"severity", "warn", "key", evt.Key)
+	if evt.Kind == EventSuspectedAbuse && b.webhook != nil {
+		b.webhook.fire(evt)
 	}
 }
 

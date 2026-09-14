@@ -47,6 +47,7 @@ func run() int {
 	sessionTTL := flag.Int("session-ttl-seconds", envIntOr("XDAUTH_SESSION_TTL_SECONDS", 300), "session TTL in seconds (env XDAUTH_SESSION_TTL_SECONDS)")
 	pollInterval := flag.Int("poll-interval-seconds", envIntOr("XDAUTH_POLL_INTERVAL_SECONDS", 3), "poll interval in seconds (env XDAUTH_POLL_INTERVAL_SECONDS)")
 	artifactTTL := flag.Int("artifact-ttl-seconds", envIntOr("XDAUTH_ARTIFACT_TTL_SECONDS", 120), "returned artifact's own lifetime in seconds (env XDAUTH_ARTIFACT_TTL_SECONDS)")
+	abuseWebhookURL := flag.String("abuse-webhook-url", os.Getenv("XDAUTH_ABUSE_WEBHOOK_URL"), "optional URL POSTed a SecurityEvent JSON body on suspected abuse (env XDAUTH_ABUSE_WEBHOOK_URL)")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -83,11 +84,12 @@ func run() int {
 	defer sessionStore.Close()
 
 	b := broker.New(broker.Config{
-		BaseURL:      trimmedBaseURL,
-		SessionTTL:   time.Duration(*sessionTTL) * time.Second,
-		PollInterval: time.Duration(*pollInterval) * time.Second,
-		ArtifactTTL:  time.Duration(*artifactTTL) * time.Second,
-		Logger:       logger,
+		BaseURL:         trimmedBaseURL,
+		SessionTTL:      time.Duration(*sessionTTL) * time.Second,
+		PollInterval:    time.Duration(*pollInterval) * time.Second,
+		ArtifactTTL:     time.Duration(*artifactTTL) * time.Second,
+		AbuseWebhookURL: *abuseWebhookURL,
+		Logger:          logger,
 	}, sessionStore, idp)
 
 	srv := &http.Server{

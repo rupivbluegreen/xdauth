@@ -47,6 +47,8 @@ func (b *Broker) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	b.detector.Observe(EventRepeatedStart, req.LoginHint, "", time.Now())
+
 	ip := clientIP(r)
 	if !b.ipLimiter.Allow(ip) || !b.hintLimiter.Allow(req.LoginHint) {
 		writeJSONError(w, http.StatusTooManyRequests, "rate_limited", "too many session starts; try again later")
@@ -175,7 +177,7 @@ func (b *Broker) handleIdPResponse(w http.ResponseWriter, r *http.Request) {
 
 	if bindErr != nil {
 		if errors.Is(bindErr, ErrIdentityMismatch) {
-			logTransition(r.Context(), b.cfg.Logger, sess.ID, "identity_mismatch", "severity", "warn")
+			b.detector.Observe(EventIdentityMismatch, sess.LoginHint, sess.ID, now)
 			renderResult(w, http.StatusForbidden, "Identity mismatch", "You are signed in as a different account than the one this request is for. The request has been denied.")
 			return
 		}
@@ -240,6 +242,7 @@ func (b *Broker) handleApprove(w http.ResponseWriter, r *http.Request) {
 		logTransition(r.Context(), b.cfg.Logger, sess.ID, "approval_not_bound", "severity", "warn")
 		renderResult(w, http.StatusForbidden, "Continue on your device", "This sign-in is waiting for approval on the browser where you signed in. Please continue there.")
 	case appErr != nil:
+		b.detector.Observe(EventWrongCode, clientIP(r), sess.ID, now)
 		renderApprove(w, sess, b.cfg.BaseURL)
 	default:
 		renderResult(w, http.StatusOK, "Done", "This request has been processed.")
@@ -278,8 +281,13 @@ func (b *Broker) handlePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	wasConsumed := sess.Consumed
 	result, pollErr := poll(sess, req.CodeVerifier, time.Now(), b.cfg.ArtifactTTL)
 	_ = b.store.Update(r.Context(), sess)
+
+	if wasConsumed && result.Status == PollExpired {
+		b.detector.Observe(EventConsumedReplay, clientIP(r), sess.ID, time.Now())
+	}
 
 	if pollErr != nil {
 		if errors.Is(pollErr, ErrInvalidVerifier) {

@@ -6,7 +6,7 @@ require (
 	github.com/alicebob/miniredis/v2 v2.39.0 // test-only: in-process Redis for internal/store/redis_test.go
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/crewjam/saml v0.5.1 // internal/saml: SAML 2.0 service-provider support alongside OIDC, no maintained stdlib-only alternative
-	github.com/go-chi/chi/v5 v5.3.2 // router named allowed by the MVP spec
+	github.com/go-chi/chi/v5 v5.4.0 // router named allowed by the MVP spec
 	github.com/golang-jwt/jwt/v5 v5.3.1 // test-only: signs ID tokens for the fake OIDC provider in integration_test.go
 	github.com/redis/go-redis/v9 v9.22.0 // internal/store: optional shared session store for multi-replica brokers
 	github.com/stretchr/testify v1.10.0 // test assertion library named allowed by the MVP spec
